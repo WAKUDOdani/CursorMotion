@@ -13,7 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7565f6?style=flat" alt="MIT license"></a>
 </p>
 <p align="center"><a href="#features">Features</a> · <a href="docs/USAGE.en.md">Guide</a> · <a href="https://github.com/WAKUDOdani/CursorMotion/releases">Releases</a> · <a href="https://t.me/WAKUDOdani">Telegram</a> · <a href="https://github.com/WAKUDOdani/CursorMotion/issues">Help and issues</a></p>
-<p align="center"><a href="docs/assets/collection.png"><img src="docs/assets/collection.png" width="1080" alt="Actual CursorMotion interface showing the cursor collection"></a><br><sub>The real application with demonstration settings. Shape samples use the same renderer as the Windows cursor.</sub></p>
+<p align="center"><a href="docs/assets/collection.png"><img src="docs/assets/collection-rounded.svg" width="1080" alt="Actual CursorMotion interface showing the cursor collection"></a><br><sub>The real application with demonstration settings. Shape samples use the same renderer as the Windows cursor.</sub></p>
 
 ## Features
 
@@ -28,7 +28,7 @@
 <details>
 <summary><strong>See cursor settings</strong></summary>
 
-<a href="docs/assets/cursor.png"><img src="docs/assets/cursor.png" width="1080" alt="Independent cursor shape settings"></a>
+<a href="docs/assets/cursor.png"><img src="docs/assets/cursor-rounded.svg" width="1080" alt="Independent cursor shape settings"></a>
 
 Motion settings and the applied pack are saved automatically. Appearance drafts require applying; export saves the applied profile.
 

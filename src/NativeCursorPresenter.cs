@@ -67,6 +67,11 @@ internal sealed class NativeCursorPresenter : IDisposable
     }
     public nint CreatePrivateCursor(byte[] pixels, int newWidth, int newHeight, int hotX, int hotY)
     {
+        using var scaling = CursorPixelScaling.Enter();
+        return CreatePhysicalCursor(pixels, newWidth, newHeight, hotX, hotY);
+    }
+    nint CreatePhysicalCursor(byte[] pixels, int newWidth, int newHeight, int hotX, int hotY)
+    {
         if (newWidth <= 0 || newHeight <= 0 || newWidth > 2048 || newHeight > 2048 || pixels.Length != newWidth * newHeight * 4
             || hotX < 0 || hotX >= newWidth || hotY < 0 || hotY >= newHeight) throw new ArgumentException("Invalid native frame bounds/hotspot");
         if (width != newWidth || height != newHeight || color == 0)
@@ -102,10 +107,11 @@ internal sealed class NativeCursorPresenter : IDisposable
     }
     internal nint[] CreatePublication(byte[] pixels, int width, int height, int hotX, int hotY, int count)
     {
+        using var scaling = CursorPixelScaling.Enter();
         var handles = new nint[count];
         try
         {
-            handles[0] = CreatePrivateCursor(pixels, width, height, hotX, hotY);
+            handles[0] = CreatePhysicalCursor(pixels, width, height, hotX, hotY);
             for (int i = 1; i < count; i++)
             {
                 handles[i] = Native.CopyImage(handles[0], 2, 0, 0, 0);

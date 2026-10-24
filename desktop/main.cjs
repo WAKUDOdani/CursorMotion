@@ -18,7 +18,7 @@ if(!test&&fs.existsSync(path.join(portableRoot,'portable.flag'))){
 }
 let window,engine,backendInput,ready,sequence=0,closing=false;
 const pending=new Map();
-const allowed=new Set(['get','status','enabled','set','appearance','forms','pack','preset','reset','artwork']);
+const allowed=new Set(['get','status','enabled','set','appearance','forms','pack','preset','reset','artwork','presets-save','presets-apply','presets-delete']);
 function request(cmd,data={}){
  return new Promise((resolve,reject)=>{
   if(!backendInput||backendInput.destroyed)return reject(Error('Движок остановлен. Перезапусти приложение.'));
@@ -68,8 +68,15 @@ ipcMain.handle('studio:request',async(event,cmd,data)=>{verified(event);if(!allo
 ipcMain.handle('studio:startup',async(event,enabled)=>{verified(event);await ready;if(!hosted)return {enabled:false,available:false};if(enabled!==undefined&&typeof enabled!=='boolean')throw Error('Некорректная настройка автозапуска');return request('startup',enabled===undefined?{}:{enabled});});
 ipcMain.handle('studio:window',(event,action)=>{verified(event);if(action==='minimize')hosted?shutdown(true):window.minimize();if(action==='maximize')window.isMaximized()?window.unmaximize():window.maximize();if(action==='close')shutdown(true);});
 ipcMain.handle('studio:telegram',event=>{verified(event);return shell.openExternal('https://t.me/WAKUDOdani');});
-ipcMain.handle('studio:file',async(event,action)=>{
+ipcMain.handle('studio:file',async(event,action,data)=>{
  verified(event);await ready;
+ if(action==='import-preset'){const result=await dialog.showOpenDialog(window,{title:'Добавить пресет',properties:['openFile'],filters:[{name:'Профиль CursorMotion',extensions:['json']}]});return result.canceled?null:request('presets-import',{path:result.filePaths[0]});}
+ if(action==='export-preset'){
+  if(!data||typeof data.id!=='string')throw Error('Неизвестный пресет');
+  const state=await request('get');const preset=state.presets.find(item=>item.id===data.id);if(!preset)throw Error('Пресет уже удалён');
+  const filename=preset.name.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_')+'.json';
+  const result=await dialog.showSaveDialog(window,{title:'Экспорт пресета',defaultPath:filename,filters:[{name:'Профиль CursorMotion',extensions:['json']}]});return result.canceled?null:request('presets-export',{id:preset.id,path:result.filePath});
+ }
  if(action==='import'){const result=await dialog.showOpenDialog(window,{title:'Импорт настроек',properties:['openFile'],filters:[{name:'Профиль CursorMotion',extensions:['json']}]});return result.canceled?null:request('import',{path:result.filePaths[0]});}
  if(action==='export'){const result=await dialog.showSaveDialog(window,{title:'Экспорт настроек',defaultPath:'CursorMotion.json',filters:[{name:'Профиль CursorMotion',extensions:['json']}]});return result.canceled?null:request('export',{path:result.filePath});}
  throw Error('Неизвестное действие');
@@ -93,6 +100,7 @@ else {
  }).catch(async error=>{if(!test)dialog.showErrorBox('CursorMotion',error.message);else console.error(error);await shutdown();});
 }
 app.on('window-all-closed',()=>shutdown());
+if(test)for(const event of ['before-quit','will-quit','quit','window-all-closed'])app.on(event,()=>testTrace(event));
 async function runTests(){
  const index=process.argv.indexOf('--output');const output=index>=0?path.resolve(process.argv[index+1]):path.join(__dirname,'ui-test');fs.mkdirSync(output,{recursive:true});
  let framePump;
@@ -101,6 +109,11 @@ async function runTests(){
   // Both hidden test modes need their OWN compositor clock, including the
   // hosted connection/close probe. This never captures the user's desktop.
   framePump=setInterval(()=>{if(window&&!window.isDestroyed())window.webContents.capturePage({x:0,y:0,width:1,height:1}).catch(()=>{});},120);
+  // A real close happens after the renderer has connected. Closing its loading
+  // skeleton races newly-created IPC work with the disconnect/quit sequence.
+  let studioReady=false;
+  for(let i=0;i<100;i++){if(await window.webContents.executeJavaScript('Boolean(window.__studioReady)')){studioReady=true;break;}await new Promise(r=>setTimeout(r,100));}
+  if(!studioReady)throw Error('Settings renderer did not become ready');
   if(process.argv.includes('--connection-test')){
    const snapshot=await request('get');
    const startup=hosted?await request('startup'):null;
@@ -110,7 +123,6 @@ async function runTests(){
   }
   // A hidden Chromium window may stop requesting frames after a view transition.
   // Keep this test's own compositor painting; never capture the user's desktop.
-  for(let i=0;i<100;i++){if(await window.webContents.executeJavaScript('Boolean(window.__studioReady)'))break;await new Promise(r=>setTimeout(r,100));}
   const errors=[];
   window.webContents.on('console-message',(_event,_level,message)=>{fs.appendFileSync(path.join(output,'progress.log'),String(message)+'\n');if(_level>=3)errors.push(message);});
   const results=await Promise.race([window.webContents.executeJavaScript('window.__runStudioTests()'),new Promise((_,reject)=>setTimeout(()=>reject(Error('UI interaction checks timed out after 600 seconds')),600000))]);

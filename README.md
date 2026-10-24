@@ -13,7 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7565f6?style=flat" alt="Лицензия MIT"></a>
 </p>
 <p align="center"><a href="#возможности">Возможности</a> · <a href="docs/USAGE.md">Инструкция</a> · <a href="https://github.com/WAKUDOdani/CursorMotion/releases">Что нового</a> · <a href="https://t.me/WAKUDOdani">Telegram</a> · <a href="https://github.com/WAKUDOdani/CursorMotion/issues">Помощь и ошибки</a></p>
-<p align="center"><a href="docs/assets/collection.png"><img src="docs/assets/collection.png" width="1080" alt="Настоящий интерфейс CursorMotion: коллекция наборов курсора"></a><br><sub>Настоящий интерфейс приложения с демонстрационными настройками. Образцы форм рисует тот же движок, что и курсор Windows.</sub></p>
+<p align="center"><a href="docs/assets/collection.png"><img src="docs/assets/collection-rounded.svg" width="1080" alt="Настоящий интерфейс CursorMotion: коллекция наборов курсора"></a><br><sub>Настоящий интерфейс приложения с демонстрационными настройками. Образцы форм рисует тот же движок, что и курсор Windows.</sub></p>
 
 ## Возможности
 
@@ -28,7 +28,7 @@
 <details>
 <summary><strong>Посмотреть настройки курсора</strong></summary>
 
-<a href="docs/assets/cursor.png"><img src="docs/assets/cursor.png" width="1080" alt="Независимые параметры форм курсора"></a>
+<a href="docs/assets/cursor.png"><img src="docs/assets/cursor-rounded.svg" width="1080" alt="Независимые параметры форм курсора"></a>
 
 Настройки движения и применённый набор сохраняются автоматически. Изменения оформления форм применяются кнопкой; экспорт сохраняет применённый профиль.
 

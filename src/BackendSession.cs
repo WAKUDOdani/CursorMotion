@@ -12,6 +12,7 @@ internal sealed class BackendSession : IDisposable
     readonly bool persist;
     readonly Timer saveTimer;
     readonly Lazy<NativeArtworkService> artwork = new(() => new NativeArtworkService());
+    readonly UserPresets presets;
     Settings settings;
     public OverlayEngine Engine { get; }
     public BackendSession(bool diagnostic, bool enabled, string? profilePath = null)
@@ -19,11 +20,15 @@ internal sealed class BackendSession : IDisposable
         this.diagnostic = diagnostic;
         this.profilePath = profilePath; persist = !diagnostic || profilePath != null;
         settings = persist ? Settings.Load(profilePath) : new();
+        string presetDirectory = diagnostic
+            ? Path.Combine(profilePath is null ? Path.GetTempPath() : Path.GetDirectoryName(Path.GetFullPath(profilePath))!, "CursorMotion-presets-test-" + Guid.NewGuid().ToString("N"))
+            : Path.Combine(Settings.DataDirectory, "presets");
+        presets = new(presetDirectory);
         Engine = new(settings, startThread: !diagnostic) { Enabled = !diagnostic && enabled };
         saveTimer = new(_ => { try { Flush(); } catch (Exception ex) { Program.Log(ex); } }, null, Timeout.Infinite, Timeout.Infinite);
     }
     public object State() => new { enabled = Engine.Enabled, error = Engine.Failure, adapter = Engine.Status, fps = Engine.ActualFps, renderMs = Engine.RenderMilliseconds, presentation = Engine.Presentation, frames = Engine.RenderedFrames, diagnostics = Engine.Diagnostics };
-    object Snapshot() => new { settings, appearances = Enumerable.Range(0, 4).Select(settings.AppearanceFor).ToArray(), packs = CursorPacks.All, state = State(), displays = Native.Displays().Select((display, index) => new { id = index, label = display.ToString() }).ToArray(), warning = diagnostic ? null : Settings.LoadWarning };
+    object Snapshot() => new { settings, appearances = Enumerable.Range(0, 4).Select(settings.AppearanceFor).ToArray(), packs = CursorPacks.All, presets = presets.Items.Select(item => new { id = item.Id, name = item.Name, updatedAt = item.UpdatedAt, isCurrent = item.Settings == settings, summary = new { scale = item.Settings.AppearanceFor(0).Scale, shutter = item.Settings.Shutter, smoothing = item.Settings.Smoothing } }).ToArray(), presetWarning = presets.Warning, state = State(), displays = Native.Displays().Select((display, index) => new { id = index, label = display.ToString() }).ToArray(), warning = diagnostic ? null : Settings.LoadWarning };
     public object Execute(string command, JsonElement data = default)
     {
         if (command == "artwork")
@@ -68,7 +73,15 @@ internal sealed class BackendSession : IDisposable
                     var motion = Settings.Preset(data.GetProperty("name").GetString()!);
                     settings = settings with { Smoothing = motion.Smoothing, Damping = motion.Damping, Shutter = motion.Shutter, TrailFalloff = motion.TrailFalloff, MaxSamples = motion.MaxSamples, Tilt = motion.Tilt, ClickScale = motion.ClickScale };
                     changed = true; result = new { }; break;
-                case "reset": settings = new(); changed = true; result = new { }; break;
+                case "presets-save":
+                    presets.Save(data.GetProperty("name").GetString()!, settings,
+                        data.TryGetProperty("id", out var presetId) && presetId.ValueKind == JsonValueKind.String ? presetId.GetString() : null);
+                    return Snapshot();
+                case "presets-apply": settings = presets.Get(data.GetProperty("id").GetString()!).Settings; changed = true; result = new { }; break;
+                case "presets-delete": presets.Delete(data.GetProperty("id").GetString()!); return Snapshot();
+                case "presets-import": presets.Import(data.GetProperty("path").GetString()!); return Snapshot();
+                case "presets-export": presets.Get(data.GetProperty("id").GetString()!).Settings.Save(data.GetProperty("path").GetString()!); return new { saved = true };
+                case "reset": settings = Settings.CreateDefault(); changed = true; result = new { }; break;
                 case "import": settings = (JsonSerializer.Deserialize<Settings>(File.ReadAllText(data.GetProperty("path").GetString()!)) ?? throw new JsonException("Пустой профиль")).Validate(); changed = true; result = new { }; break;
                 case "export": settings.Save(data.GetProperty("path").GetString()!); return new { saved = true };
                 default: throw new ArgumentException("Неизвестная команда");

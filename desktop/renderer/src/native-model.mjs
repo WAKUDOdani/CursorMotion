@@ -132,9 +132,9 @@ export class NativeStudio {
     });
   }
 
-  async file(action) {
+  async file(action, data) {
     await this.flush();
-    return this.enqueue(() => this.bridge.file(action));
+    return this.enqueue(() => this.bridge.file(action, data));
   }
 
   async poll() {

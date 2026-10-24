@@ -1,5 +1,28 @@
 # Build and verification
 
+## Author defaults (development3.10)
+
+`src/Assets/DefaultProfile.json` is embedded in the native engine. It is used
+only when no saved profile exists, when a damaged profile cannot be read,
+or when the user explicitly resets settings. An existing profile always wins.
+The author has deferred choosing new defaults; the current file preserves the
+old values. Do not substitute test screenshots or personal settings silently.
+
+After exporting the author's chosen applied profile, run:
+
+```powershell
+node tools/set-default-profile.cjs path/to/export.json
+```
+
+The tool validates through an isolated diagnostic backend before updating the
+embedded JSON. Review monitor/region settings for use on another PC, rebuild,
+then verify a missing-profile launch and an existing-profile launch separately.
+`--output` selects a test destination without changing release defaults.
+
+User presets live in `%LOCALAPPDATA%/CursorMotion/presets`, with one atomic
+JSON file per generated ID. Diagnostic tests use separate temporary libraries.
+Reset does not delete this library. Import/export uses regular Settings JSON.
+
 Requirements: Windows x64, PowerShell 7, .NET SDK10.0.401, Node.js24/npm.
 `global.json`, `src/packages.lock.json`, the npm lockfile, and `runtime-lock.json`
 record the toolchain/package inputs. Electron is downloaded only at build time,

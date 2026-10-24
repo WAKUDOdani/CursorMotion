@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { optionHelp } from './option-help.mjs';
+import { PresetLibrary } from './PresetLibrary.jsx';
 import { ArrowRight, Check, Cursor, Diamond, Monitor, SlidersHorizontal, WaveSine, X, Minus, Square, TelegramLogo } from '@phosphor-icons/react';
 import { SettingsIllustration } from './SettingsIllustration.jsx';
 import { artworkPath, collectionArtworkFrame, createCursorMix, cursorForms, materialIds, packIdForMix } from './settings-artwork.mjs';
@@ -85,9 +87,10 @@ function TiltArtwork({ pack, className = '', intensity = 1, reduced = false, sca
   return <span className={`artwork-space ${className}`} data-aspect-ratio={children ? aspectRatio : undefined} onPointerMove={move} onPointerLeave={leave}>{children ? <span ref={artwork} className="cursor-artwork composed-artwork" style={style}>{children}</span> : <img ref={artwork} className="cursor-artwork" style={style} src={artworkPath(pack.id === 'custom' ? 'classic' : pack.id, 'arrow')} alt={`${pack.name}: реальный указатель`} draggable="false" />}</span>;
 }
 
-function RangeControl({ label, value, min, max, step = 1, unit = '', onChange, description }) {
+function RangeControl({ label, value, min, max, step = 1, unit = '', onChange, description = optionHelp[label] }) {
+  const hintId = useId();
   const progress = ((value - min) / (max - min)) * 100;
-  return <label className="range-control"><span className="range-label"><span>{label}</span><output>{Number(value.toFixed(3))}{unit}</output></span><input type="range" aria-label={label} min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.target.value))} style={{ '--range-progress': `${progress}%` }} />{description && <span className="range-description">{description}</span>}</label>;
+  return <label className="range-control"><span className="range-label"><span>{label}</span><output>{Number(value.toFixed(3))}{unit}</output></span><input type="range" aria-label={label} aria-describedby={description ? hintId : undefined} min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.target.value))} style={{ '--range-progress': `${progress}%` }} />{description && <span id={hintId} className="range-description">{description}</span>}</label>;
 }
 
 export function App() {
@@ -101,8 +104,9 @@ function WindowChrome() {
 }
 
 function ColorControl({ label, value, onChange }) {
+  const hintId = useId();
   const alpha = Math.round(parseInt(value.slice(1, 3), 16) / 255 * 100);
-  return <div className="native-color"><label>{label}<input type="color" aria-label={label} value={`#${value.slice(3)}`} onChange={event => onChange(`${value.slice(0, 3)}${event.target.value.slice(1)}`.toUpperCase())} /></label><label>Непрозрачность<input type="number" aria-label={`${label}, непрозрачность`} min={0} max={100} step={1} value={alpha} onChange={event => onChange(`#${Math.round(Math.max(0, Math.min(100, Number(event.target.value))) * 255 / 100).toString(16).padStart(2, '0')}${value.slice(3)}`.toUpperCase())} /><span>%</span></label></div>;
+  return <div className="native-color"><label>{label}<input type="color" aria-label={label} aria-describedby={hintId} value={`#${value.slice(3)}`} onChange={event => onChange(`${value.slice(0, 3)}${event.target.value.slice(1)}`.toUpperCase())} /></label><label>Непрозрачность<input type="number" aria-label={`${label}, непрозрачность`} aria-describedby={hintId} min={0} max={100} step={1} value={alpha} onChange={event => onChange(`#${Math.round(Math.max(0, Math.min(100, Number(event.target.value))) * 255 / 100).toString(16).padStart(2, '0')}${value.slice(3)}`.toUpperCase())} /><span>%</span></label><p id={hintId} className="option-help">{optionHelp[label]}</p></div>;
 }
 
 function Studio({ native }) {
@@ -319,6 +323,19 @@ function Studio({ native }) {
     if (result) setMotionPreset(name);
   }
 
+  async function saveUserPreset(name, id) {
+    return commit(async () => {
+      if (cursorHasChanges) await client.command('forms', { appearances: draft });
+      return client.command('presets-save', { name, ...(id ? { id } : {}) });
+    }, id ? 'Пресет обновлён' : 'Пресет сохранён', true);
+  }
+
+  async function applyUserPreset(preset) {
+    const result = await commit(() => client.command('presets-apply', { id: preset.id }), `Пресет «${preset.name}» применён`, true);
+    if (result) { setMotionPreset(''); setSharedSize(false); }
+    return result;
+  }
+
   return <div className={`studio ${reduced ? 'reduced-motion' : ''}`} data-page={page} style={{ '--glass-density': density / 100 }}>
     <div className="pearl-backdrop" aria-hidden="true" />
     <WindowChrome />
@@ -352,10 +369,10 @@ function Studio({ native }) {
           {page === 'motion' ? <>
             <h2>Ощущение движения</h2><p className="panel-intro">Мягкость в деталях, точность под рукой.</p>
             <div className="segments" aria-label="Характер движения">{['Точный', 'Сбалансированный', 'Кино'].map(name => <button key={name} aria-pressed={motionPreset === name} onClick={() => choosePreset(name)}>{name}</button>)}</div>
-            <RangeControl label="Сглаживание" value={smoothing} min={0} max={500} unit=" мс" onChange={value => globalChange('Smoothing', value)} description="Больше — длиннее и мягче след. Положение курсора остаётся точным." />
+            <RangeControl label="Сглаживание" value={smoothing} min={0} max={500} unit=" мс" onChange={value => globalChange('Smoothing', value)}  />
             <RangeControl label="Затухание пружины" value={damping} min={0.3} max={1.5} step={.01} onChange={value => globalChange('Damping', value)} />
             <RangeControl label="Угол затвора" value={shutter} min={0} max={720} unit="°" onChange={value => globalChange('Shutter', value)} />
-            <RangeControl label="Параллакс объектов" value={parallax} min={0} max={2} step={.1} unit="×" onChange={value => globalChange('InterfaceParallax', value)} description="Только иллюстрации интерфейса, не движение системного курсора." />
+            <RangeControl label="Параллакс объектов" value={parallax} min={0} max={2} step={.1} unit="×" onChange={value => globalChange('InterfaceParallax', value)}  />
             <details className="native-details"><summary>Шлейф и реакции</summary>
               <RangeControl label="Затухание шлейфа" value={settings.TrailFalloff} min={0} max={1} step={.01} onChange={value => globalChange('TrailFalloff', value)} />
               <RangeControl label="Качество шлейфа" value={settings.MaxSamples} min={4} max={128} onChange={value => globalChange('MaxSamples', value)} />
@@ -369,9 +386,9 @@ function Studio({ native }) {
             <h2>Форма и характер</h2><p className="panel-intro">Небольшие изменения, совсем другое ощущение.</p>
             <div className="segments" aria-label="Форма курсора">{cursorForms.map(form => <button key={form.id} aria-pressed={shape === form.label} onClick={() => setShape(form.label)}>{form.label}</button>)}</div>
             {shape === 'Стрелка' && <div className="resize-appearance-note"><span className="resize-native-samples" aria-hidden="true">{['resize-horizontal','resize-vertical','resize-nwse','resize-nesw'].map(subject => <img key={subject} data-renderer="native-sdf" src={draftArtwork.frames[subject]?.dataUri || artworkPath(mix.Стрелка, subject)} alt="" />)}</span><span>Стрелки изменения размера используют это оформление.</span></div>}
-            <label className="select-control">Набор<select aria-label="Набор для формы" value={mix[shape]} onChange={event => changeFormMaterial(shape, event.target.value)}>{packs.filter(pack => pack.id !== 'custom').map(pack => <option key={pack.id} value={pack.id}>{pack.name}</option>)}</select></label>
+            <label className="select-control">Набор<select aria-label="Набор для формы" value={mix[shape]} onChange={event => changeFormMaterial(shape, event.target.value)}>{packs.filter(pack => pack.id !== 'custom').map(pack => <option key={pack.id} value={pack.id}>{pack.name}</option>)}</select><small className="option-help">Материал только для выбранной формы. Остальные формы не меняются.</small></label>
             <RangeControl label="Размер" value={appearance.Scale} min={.5} max={6} step={.05} unit="×" onChange={value => updateAppearance('Scale', value)} />
-            <label className="size-link"><input type="checkbox" aria-label="Одинаковый размер всех форм" checked={sharedSize} onChange={event => { const linked = event.target.checked; setSharedSize(linked); if (linked) { setDraft(current => withSharedSize(current, current[shapeIndex].Scale)); setMixConfirmed(false); } }} /><span>Одинаковый размер всех форм</span></label>
+            <label className="size-link"><input type="checkbox" aria-label="Одинаковый размер всех форм" checked={sharedSize} onChange={event => { const linked = event.target.checked; setSharedSize(linked); if (linked) { setDraft(current => withSharedSize(current, current[shapeIndex].Scale)); setMixConfirmed(false); } }} /><span>Одинаковый размер всех форм<small className="option-help">Слайдер размера меняет стрелку, текст, ожидание и руку вместе.</small></span></label>
             <RangeControl label="Переход между формами" value={appearance.MorphTime} min={0} max={500} unit=" мс" onChange={value => updateAppearance('MorphTime', value)} />
             <button className={`primary-button cursor-apply ${cursorHasChanges ? '' : 'is-applied'}`} disabled={!cursorHasChanges} onClick={applyCursorForms}><span>{cursorHasChanges ? 'Применить формы' : 'Формы применены'}</span>{cursorHasChanges ? <ArrowRight size={22} /> : <Check size={22} weight="bold" />}</button>
             {cursorHasChanges && <button className="native-text-button" onClick={() => { setDraft(structuredClone(model.appearances)); setMixConfirmed(false); setSharedSize(false); }}>Отменить изменения форм</button>}
@@ -383,22 +400,23 @@ function Studio({ native }) {
               <RangeControl label="Мягкость тени" value={appearance.ShadowBlur} min={0} max={10} step={.1} onChange={value => updateAppearance('ShadowBlur', value)} />
               <RangeControl label="Смещение тени X" value={appearance.ShadowX} min={-10} max={10} step={.1} onChange={value => updateAppearance('ShadowX', value)} />
               <RangeControl label="Смещение тени Y" value={appearance.ShadowY} min={-10} max={10} step={.1} onChange={value => updateAppearance('ShadowY', value)} />
-              <RangeControl label="Скрывать в покое" value={appearance.IdleHide} min={0} max={30} step={.1} unit=" с" description="0 — не скрывать." onChange={value => updateAppearance('IdleHide', value)} />
+              <RangeControl label="Скрывать в покое" value={appearance.IdleHide} min={0} max={30} step={.1} unit=" с"  onChange={value => updateAppearance('IdleHide', value)} />
               <p className="native-hint">Увеличенный образец отражает палитру, обводку и тень. Размер применяется к рабочему курсору; стрелки изменения размера следуют форме «Стрелка».</p>
             </details>
             <button className="secondary-button" onClick={() => { setSelected('custom'); setCustomOpen(true); }}>Собрать свой набор <ArrowRight size={20} /></button>
           </> : <>
             <h2>Стекло и пространство</h2><p className="panel-intro">Воздух, свет и только нужные границы.</p>
-            <RangeControl label="Плотность стекла" value={density} min={15} max={85} unit="%" onChange={value => globalChange('WindowTint', value / 100)} description="Прозрачность панелей приложения." />
-            <label className="select-control">Область действия<select aria-label="Область действия" value={settings.Monitor} onChange={event => globalChange('Monitor', Number(event.target.value))}><option value={-3}>Все экраны</option><option value={-2}>Основной экран</option>{model.displays.map(display => <option key={display.id} value={display.id}>{display.label}</option>)}<option value={-1}>Своя область</option>{settings.Monitor >= 0 && !model.displays.some(display => display.id === settings.Monitor) && <option value={settings.Monitor}>Монитор {settings.Monitor + 1} недоступен</option>}</select></label>
-            {settings.Monitor === -1 && <div className="native-region">{[['CustomX', 'X', -32768], ['CustomY', 'Y', -32768], ['CustomWidth', 'Ширина', 1], ['CustomHeight', 'Высота', 1]].map(([property, label, minimum]) => <label key={property}>{label}<input type="number" aria-label={`Область: ${label}`} min={minimum} max={32768} step={1} value={settings[property]} onChange={event => { if (event.target.value !== '') globalChange(property, Math.round(Math.max(minimum, Math.min(32768, Number(event.target.value))))); }} /></label>)}</div>}
-            <div className="setting-switch-row"><span>Специальные формы<small>Сохранять остальные специальные указатели Windows.</small></span><button className="effect-switch" role="switch" aria-checked={special} aria-label="Специальные формы" onClick={() => globalChange('PreserveSpecialCursors', !special)}><span /></button></div>
-            <div className="setting-switch-row"><span>Меньше движения<small>Убрать параллакс и пространственные переходы.</small></span><button className="effect-switch" role="switch" aria-checked={lessMotion} aria-label="Меньше движения" onClick={() => globalChange('ReduceMotion', !lessMotion)}><span /></button></div>
+            <RangeControl label="Плотность стекла" value={density} min={15} max={85} unit="%" onChange={value => globalChange('WindowTint', value / 100)}  />
+            <label className="select-control">Область действия<select aria-label="Область действия" value={settings.Monitor} onChange={event => globalChange('Monitor', Number(event.target.value))}><option value={-3}>Все экраны</option><option value={-2}>Основной экран</option>{model.displays.map(display => <option key={display.id} value={display.id}>{display.label}</option>)}<option value={-1}>Своя область</option>{settings.Monitor >= 0 && !model.displays.some(display => display.id === settings.Monitor) && <option value={settings.Monitor}>Монитор {settings.Monitor + 1} недоступен</option>}</select><small className="option-help">Где работают эффекты: на всех экранах, на одном или внутри своей области.</small></label>
+            {settings.Monitor === -1 && <div className="native-region">{[['CustomX', 'X', -32768], ['CustomY', 'Y', -32768], ['CustomWidth', 'Ширина', 1], ['CustomHeight', 'Высота', 1]].map(([property, label, minimum]) => <label key={property}>{label}<input type="number" aria-label={`Область: ${label}`} min={minimum} max={32768} step={1} value={settings[property]} title={({CustomX:"Левая граница области в пикселях. На левом мониторе может быть отрицательной.",CustomY:"Верхняя граница области в пикселях.",CustomWidth:"Ширина своей области в пикселях.",CustomHeight:"Высота своей области в пикселях."})[property]} onChange={event => { if (event.target.value !== '') globalChange(property, Math.round(Math.max(minimum, Math.min(32768, Number(event.target.value))))); }} /></label>)}</div>}
+            <div className="setting-switch-row"><span>Специальные формы<small>Оставлять системными редкие формы: например, запрет действия или точный прицел.</small></span><button className="effect-switch" role="switch" aria-checked={special} aria-label="Специальные формы" onClick={() => globalChange('PreserveSpecialCursors', !special)}><span /></button></div>
+            <div className="setting-switch-row"><span>Меньше движения<small>Уменьшить анимации этого окна. Эффекты самого курсора не меняются.</small></span><button className="effect-switch" role="switch" aria-checked={lessMotion} aria-label="Меньше движения" onClick={() => globalChange('ReduceMotion', !lessMotion)}><span /></button></div>
             <div className="motion-preference"><SlidersHorizontal size={19} /><span>{systemReduced ? 'Уменьшение движения включено в системе' : lessMotion ? 'Анимации интерфейса уменьшены' : 'Анимации учитывают системные настройки'}</span></div>
+            <PresetLibrary presets={model.presets} warning={model.presetWarning} busy={committing || busy} hasDraft={cursorHasChanges} onSave={saveUserPreset} onApply={applyUserPreset} onUpdate={preset => saveUserPreset(preset.name, preset.id)} onDelete={preset => commit(() => client.command('presets-delete', { id: preset.id }), 'Пресет удалён')} onImport={() => commit(() => client.file('import-preset'), 'Пресет добавлен в библиотеку')} onExport={preset => commit(() => client.file('export-preset', { id: preset.id }), 'Пресет экспортирован')} />
             <details className="native-details"><summary>Движок и профиль</summary>
               <StartupControl />
-              <div className="setting-switch-row"><span>Совместимость с NVIDIA<small>Убирает пустые поля изображения курсора для записи. Очень длинное размытие может отключаться.</small></span><button className="effect-switch" role="switch" aria-checked={!!settings.CaptureCompatibility} aria-label="Совместимость с NVIDIA" onClick={() => globalChange('CaptureCompatibility', !settings.CaptureCompatibility)}><span /></button></div>
-              <label className="select-control">Режим формы<select aria-label="Режим формы" value={settings.Style} onChange={event => globalChange('Style', Number(event.target.value))}><option value={-1}>Автоматически</option><option value={0}>Всегда стрелка</option><option value={1}>Всегда текст</option><option value={2}>Всегда ожидание</option><option value={3}>Всегда рука</option></select></label>
+              <div className="setting-switch-row"><span>Совместимость с NVIDIA<small>Убирает пустые поля изображения курсора для записи. Включи, если запись искажает курсор. Очень длинное размытие может отключаться.</small></span><button className="effect-switch" role="switch" aria-checked={!!settings.CaptureCompatibility} aria-label="Совместимость с NVIDIA" onClick={() => globalChange('CaptureCompatibility', !settings.CaptureCompatibility)}><span /></button></div>
+              <label className="select-control">Режим формы<select aria-label="Режим формы" value={settings.Style} onChange={event => globalChange('Style', Number(event.target.value))}><option value={-1}>Автоматически</option><option value={0}>Всегда стрелка</option><option value={1}>Всегда текст</option><option value={2}>Всегда ожидание</option><option value={3}>Всегда рука</option></select><small className="option-help">«Автоматически» меняет форму по месту наведения. Другие варианты закрепляют одну форму.</small></label>
               <RangeControl label="Частота отрисовки" value={settings.Fps} min={30} max={240} unit=" FPS" onChange={value => globalChange('Fps', value)} />
               <p className="native-hint">{model.state.adapter}<br />{!model.state.enabled ? 'Эффект на паузе' : model.state.fps < 1 ? 'Покой · без повторной отрисовки' : `${Math.round(model.state.fps)} кадров/с · ${Number(model.state.renderMs).toFixed(1)} мс на кадр`}</p>
               <div className="native-profile-actions"><button disabled={committing} onClick={() => commit(() => client.file('import'), 'Профиль импортирован', true)}>Импорт</button><button disabled={committing} onClick={() => commit(() => client.file('export'), cursorHasChanges ? 'Сохранён применённый профиль. Черновик форм не экспортируется.' : 'Профиль экспортирован')}>Экспорт</button><button disabled={committing} onClick={() => setResetOpen(true)}>Сбросить</button></div>
@@ -409,7 +427,7 @@ function Studio({ native }) {
         </div></div>
       </section>}
     </main>
-    <footer className="native-footer"><button onClick={() => window.studio.telegram()} aria-label="Telegram WAKUDO"><TelegramLogo size={17} /> WAKUDO</button><span>Пауза · Ctrl + Alt + F8</span><button onClick={() => setPage('space')}>Профиль и настройки</button><button aria-label="Вернуть стандартные настройки" onClick={() => setResetOpen(true)}>Стандартные настройки</button></footer>
+    <footer className="native-footer"><button onClick={() => window.studio.telegram()} aria-label="Telegram WAKUDO"><TelegramLogo size={17} /> WAKUDO</button><span>Пауза · Ctrl + Alt + F8</span><button onClick={async () => { await setPage('space'); document.getElementById('user-presets')?.scrollIntoView({ block: 'start', behavior: reduced ? 'instant' : 'smooth' }); }}>Пресеты и настройки</button><button aria-label="Вернуть стандартные настройки" onClick={() => setResetOpen(true)}>Стандартные настройки</button></footer>
     <div className={`toast glass ${notice ? 'is-visible' : ''}`} role="status" aria-live="polite"><Check size={19} /><span>{notice}</span></div>
     <dialog ref={dialog} className="glass mix-dialog" onCancel={() => setCustomOpen(false)} onClick={event => { if (event.target === dialog.current) setCustomOpen(false); }}><div className="dialog-heading"><div><h2>Твой микс</h2><p>Выбери материал для каждой формы.</p></div><button className="icon-button" aria-label="Закрыть свой набор" onClick={() => setCustomOpen(false)}><X size={23} /></button></div>{Object.keys(mix).map(name => <label key={name} className="select-control">{name}<select aria-label={`Материал: ${name}`} value={mix[name]} onChange={event => changeFormMaterial(name, event.target.value)}>{packs.filter(pack => pack.id !== 'custom').map(pack => <option key={pack.id} value={pack.id}>{pack.name}</option>)}</select></label>)}<button className="primary-button" onClick={() => { setMixConfirmed(true); setCustomOpen(false); announce('Свой набор готов к применению'); }}>Готово <Check size={22} /></button></dialog>
     <ResetDialog open={resetOpen} busy={committing} onCancel={() => setResetOpen(false)} onConfirm={async () => { const result = await commit(() => client.command('reset'), 'Стандартные настройки восстановлены', true); if (result) { setResetOpen(false); setMotionPreset(''); setSharedSize(false); } }} />

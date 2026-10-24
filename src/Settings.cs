@@ -86,15 +86,21 @@ public sealed record Settings
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CursorMotion");
     public static string DefaultPath => Path.Combine(DataDirectory, "settings.json");
     public static string? LoadWarning { get; private set; }
+    public static Settings CreateDefault()
+    {
+        using var stream = typeof(Settings).Assembly.GetManifestResourceStream("CursorMotion.Assets.DefaultProfile.json")
+            ?? throw new InvalidOperationException("Стартовый профиль не включён в сборку");
+        return (JsonSerializer.Deserialize<Settings>(stream) ?? throw new JsonException("Пустой стартовый профиль")).Validate();
+    }
     public static Settings Load(string? path = null)
     {
         path ??= DefaultPath;
-        if (!File.Exists(path)) return new();
+        if (!File.Exists(path)) return CreateDefault();
         try { return (JsonSerializer.Deserialize<Settings>(File.ReadAllText(path)) ?? throw new JsonException("Empty profile")).Validate(); }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             LoadWarning = $"Не удалось прочитать профиль: {ex.Message}. Загружены исходные настройки.";
-            return new();
+            return CreateDefault();
         }
     }
     public void Save(string? path = null)

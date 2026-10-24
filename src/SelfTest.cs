@@ -46,6 +46,69 @@ internal static class SelfTest
             var custom = new Settings { CustomX = -1920, Shutter = 720, ShadowColor = "#33445566", PreserveSpecialCursors = false };
             custom.Save(path); Require(Settings.Load(path) == custom, "Profile roundtrip changed settings");
         });
+        Test("First launch: embedded defaults never overwrite an existing profile", () =>
+        {
+            string path = Path.Combine(output, "fresh-profile-" + Guid.NewGuid().ToString("N") + ".json");
+            Require(Settings.Load(path) == Settings.CreateDefault(), "Fresh launch did not use release defaults");
+            Require(!File.Exists(path), "Reading defaults wrote a profile");
+            var custom = new Settings { Smoothing = 287, Shutter = 450, Scale = 2.45, CaptureCompatibility = true };
+            custom.Save(path);
+            Require(Settings.Load(path) == custom, "Release defaults replaced an existing user profile");
+        });
+        Test("User presets: full profile, atomic update, restart, import, corruption and safe IDs", () =>
+        {
+            string directory = Path.Combine(output, "presets-" + Guid.NewGuid().ToString("N"));
+            var library = new UserPresets(directory);
+            var settings = new Settings { Smoothing = 97, Arrow = new() { Skin = 2, Scale = 2.7 }, Hand = new() { Skin = 4, MorphTime = 310 }, WindowTint = .63, Monitor = -1, CustomX = -2560, CaptureCompatibility = true };
+            var first = library.Save("Мой / пресет", settings);
+            Require(library.Items.Count == 1 && library.Get(first.Id).Settings == settings, "Full settings were not saved");
+            bool duplicate = false, traversal = false;
+            try { library.Save("МОЙ / ПРЕСЕТ", settings); } catch (ArgumentException) { duplicate = true; }
+            try { library.Delete("../../settings"); } catch (ArgumentException) { traversal = true; }
+            Require(duplicate && traversal && library.Items.Count == 1, "Duplicate name or unsafe ID accepted");
+            library.Save(first.Name, settings with { Shutter = 135 }, first.Id);
+            var restarted = new UserPresets(directory);
+            Require(restarted.Items.Count == 1 && restarted.Get(first.Id).Settings.Shutter == 135, "Update did not survive restart");
+            string exported = Path.Combine(output, "Shared preset.json"); restarted.Get(first.Id).Settings.Save(exported);
+            restarted.Import(exported); restarted.Import(exported);
+            Require(restarted.Items.Count == 3 && restarted.Items.Select(p => p.Name).Distinct().Count() == 3, "Import collided with an existing name");
+            File.WriteAllText(Path.Combine(directory, Guid.NewGuid().ToString("N") + ".json"), "{bad");
+            var recovered = new UserPresets(directory);
+            Require(recovered.Items.Count == 3 && recovered.Warning != null, "One damaged preset lost the library");
+            recovered.Delete(first.Id);
+            Require(new UserPresets(directory).Items.Count == 2, "Deletion did not persist");
+        });
+        Test("Mixed DPI: physical cursor creation and role copies restore thread scaling", () =>
+        {
+            if (!CursorPixelScaling.Available) return;
+            uint original = CursorPixelScaling.SetThreadCursorCreationScaling(144);
+            try
+            {
+                using (CursorPixelScaling.Enter()) Require(CursorPixelScaling.SetThreadCursorCreationScaling(192) == CursorPixelScaling.None, "Physical-pixel scaling not active");
+                Require(CursorPixelScaling.SetThreadCursorCreationScaling(144) == 144, "Scope did not restore creation DPI");
+                using var presenter = new NativeCursorPresenter();
+                byte[] pixels = new byte[128 * 128 * 4];
+                for (int i = 0; i < pixels.Length; i += 4) { pixels[i] = 230; pixels[i + 3] = 255; }
+                foreach (uint dpi in new uint[] { 96, 120, 144, 192, 288 })
+                {
+                    CursorPixelScaling.SetThreadCursorCreationScaling(dpi);
+                    var handles = presenter.CreatePublication(pixels, 128, 128, 17, 23, NativeCursorPresenter.PrimaryRoles.Length);
+                    try
+                    {
+                        foreach (nint handle in handles)
+                        {
+                            Require(Native.GetIconInfo(handle, out var info), "Private cursor metadata unavailable");
+                            try { Require(info.HotX == 17 && info.HotY == 23, "DPI changed the native hotspot"); }
+                            finally { Native.DeleteObject(info.Color); Native.DeleteObject(info.Mask); }
+                            NativeCursorChecks.VerifyWindowsPixels(handle, new(128, 128, 17, 23, pixels));
+                        }
+                    }
+                    finally { foreach (nint handle in handles) Native.DestroyCursor(handle); }
+                    Require(CursorPixelScaling.SetThreadCursorCreationScaling(dpi) == dpi, "Publication leaked thread scaling");
+                }
+            }
+            finally { CursorPixelScaling.SetThreadCursorCreationScaling(original); }
+        });
         Test("Popup ordering: immediate menu events, right-button edges and hooks", () =>
         {
             var policy = new TopmostPolicy();

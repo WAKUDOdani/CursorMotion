@@ -33,6 +33,12 @@ $taskRenamed=Invoke-Bootstrap $taskMovedExe 'renamed'
 if($taskRenamed.report.publicExe -ne $taskMovedExe -or $taskRenamed.report.startupCommand -ne ('"'+$taskMovedExe+'" --startup')){throw 'Renamed public startup path was lost'}
 Push-Location $taskRoot
 try{
+ # Cold extraction is verified above. Prepare the default cache separately so
+ # extraction time cannot consume the backend protocol's own deadline.
+ $taskReadyReport=Join-Path $taskOutput 'default-runtime.json'
+ $taskReady=Start-Process -FilePath $taskExe -ArgumentList @('--bootstrap-info',('"'+$taskReadyReport+'"')) -PassThru -WindowStyle Hidden
+ if(-not $taskReady.WaitForExit(120000)){ $taskReady.Kill(); throw 'Default runtime preparation timed out' }
+ if($taskReady.ExitCode -ne 0){throw 'Default runtime preparation failed'}
  node desktop/test-backend.cjs $taskExe
  if($LASTEXITCODE -ne 0){throw 'Actual single-file backend failed'}
  node tools/check-backend-eof.cjs $taskExe

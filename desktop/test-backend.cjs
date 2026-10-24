@@ -37,5 +37,20 @@ const timeout=setTimeout(()=>{console.error('Backend protocol timeout');child.ki
  const normalized=await request('artwork',{appearances:changedLooks});assert(normalized.frames.text.dataUri===repainted.frames.text.dataUri,'Still sample depends on movement/timing or scales a small bitmap');count++;
  assert(JSON.stringify((await request('get')).settings)===beforeArtwork,'Sample request mutated the profile');count++;
  let badArtwork=false;try{await request('artwork',{appearances:[four[0]]});}catch{badArtwork=true;}assert(badArtwork,'Malformed sample request accepted');count++;
+
+ const fullBeforePreset=JSON.stringify((await request('get')).settings);
+ state=await request('presets-save',{name:'Мой повседневный'});const savedId=state.presets[0].id;
+ assert(state.presets.length===1&&state.presets[0].isCurrent,'Saved preset is not current');count++;
+ await request('set',{property:'Shutter',value:90});state=await request('presets-apply',{id:savedId});
+ assert(JSON.stringify(state.settings)===fullBeforePreset&&state.presets[0].isCurrent,'Preset did not restore every setting');count++;
+ const presetExport=path.join(output,'shared-preset.json');await request('presets-export',{id:savedId,path:presetExport});
+ assert(JSON.stringify(JSON.parse(fs.readFileSync(presetExport,'utf8')))===fullBeforePreset,'Named export changed settings');count++;
+ const beforeLibraryImport=JSON.stringify(state.settings);state=await request('presets-import',{path:presetExport});
+ assert(state.presets.length===2&&JSON.stringify(state.settings)===beforeLibraryImport,'Library import changed active settings');count++;
+ state=await request('reset');assert(state.presets.length===2,'Reset erased the preset library');count++;
+ for(const [cmd,data]of [['presets-save',{name:'  '}],['presets-save',{name:'МОЙ ПОВСЕДНЕВНЫЙ'}],['presets-delete',{id:'../../settings'}]]){
+  let rejected=false;try{await request(cmd,data)}catch{rejected=true}assert(rejected,'Invalid preset request accepted');count++;
+ }
+ state=await request('presets-delete',{id:savedId});assert(state.presets.length===1,'Preset was not deleted');count++;
  await request('shutdown');fs.writeFileSync(path.join(output,'results.json'),JSON.stringify({pass:true,assertions:count,roundtrip:true,invalidInput:true},null,2));console.log('Protocol passed:',count);
  }catch(error){console.error(error);child.kill();process.exitCode=1;}finally{clearTimeout(timeout);}})();

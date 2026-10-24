@@ -9,9 +9,9 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>CursorMotion.Engine</AssemblyName>
-    <Version>3.9.0</Version>
-    <FileVersion>3.9.0.0</FileVersion>
-    <InformationalVersion>3.9.0-single-exe-portable</InformationalVersion>
+    <Version>3.10.0</Version>
+    <FileVersion>3.10.0.0</FileVersion>
+    <InformationalVersion>3.10.0-single-exe-portable</InformationalVersion>
     <ApplicationIcon>Assets/AppIcon.ico</ApplicationIcon>
     <RootNamespace>CursorMotion</RootNamespace>
     <StartupObject>CursorMotion.Program</StartupObject>
@@ -24,6 +24,7 @@
     <Using Remove="System.Drawing" />
     <EmbeddedResource Include="Cursor.hlsl" />
     <EmbeddedResource Include="Assets/*.cso" />
+    <EmbeddedResource Include="Assets/DefaultProfile.json" />
     <Resource Include="Assets/AppIcon.png" />
     <Resource Include="Assets/AppIcon.ico" />
   </ItemGroup>

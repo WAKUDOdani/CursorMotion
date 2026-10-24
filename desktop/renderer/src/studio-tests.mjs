@@ -189,6 +189,26 @@ export async function runStudioTests(client) {
   check(document.querySelector('.studio').dataset.page === 'collection', 'Rapid navigation ends on latest requested page');
   check(document.querySelector('[data-pack="crystal"]').getAttribute('aria-pressed') === 'true', 'Swiping preserves collection selection');
   const hoverContours = await verifySelectionContours(check);
+
+  await window.__showPage('space'); await settle();
+  const savedFullPreset = JSON.stringify(state().settings);
+  await change('input[aria-label="Название пресета"]', 'Мой тестовый');
+  await click('.preset-create button');
+  check(state().presets.length === 1 && state().presets[0].name === 'Мой тестовый', 'Preset saved from visible UI');
+  await change('input[aria-label="Плотность стекла"]', 61);
+  await click('[aria-label="Применить пресет Мой тестовый"]');
+  check(JSON.stringify(state().settings) === savedFullPreset, 'Visible preset restores full native profile');
+  await click('[aria-label="Удалить пресет Мой тестовый"]');
+  await click('dialog[open] .native-profile-actions button:first-child');
+  check(state().presets.length === 1, 'Canceling deletion retains preset');
+  await click('[aria-label="Удалить пресет Мой тестовый"]');
+  await click('dialog[open] .native-profile-actions button:nth-child(2)');
+  check(state().presets.length === 0 && JSON.stringify(state().settings) === savedFullPreset, 'Deleting preset preserves applied settings');
+  for (const page of ['motion', 'cursor']) {
+    await window.__showPage(page); await settle();
+    check([...document.querySelectorAll('.range-control input')].every(input => document.getElementById(input.getAttribute('aria-describedby'))?.textContent.length > 12), 'Visible descriptions for every slider in '+page);
+  }
+  await window.__showPage('collection'); await settle();
   return { assertions, independentForms: true, atomicApply: true, nativeSettings: true, sandbox: true, pageFrames, panelFrames, hoverContours, directionalSwipe: true, containedScrollbars: true };
 }
 
