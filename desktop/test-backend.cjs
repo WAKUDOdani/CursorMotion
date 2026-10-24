@@ -6,7 +6,9 @@ let id=0;const pending=new Map();let readyResolve;const ready=new Promise(resolv
 readline.createInterface({input:child.stdout}).on('line',line=>{const message=JSON.parse(line);if(message.event==='ready')readyResolve(message.data);else{const p=pending.get(message.id);if(p){pending.delete(message.id);message.ok?p.resolve(message.data):p.reject(Error(message.error));}}});
 const request=(cmd,data={})=>new Promise((resolve,reject)=>{const key=++id;pending.set(key,{resolve,reject});child.stdin.write(JSON.stringify({id:key,cmd,data})+'\n');});
 const assert=(ok,text)=>{if(!ok)throw Error(text);};
-const timeout=setTimeout(()=>{console.error('Backend protocol timeout');child.kill();process.exit(1);},15000);
+// This suite renders real SDF artwork. CPU-only CI can legitimately take longer
+// than15s; this is a TEST deadline, not the production IPC response deadline.
+const timeout=setTimeout(()=>{console.error('Backend protocol/artwork timeout after120s');child.kill();process.exit(1);},120000);
 (async()=>{let count=0;try{
  let state=await ready;assert(state.appearances.length===4,'Missing appearances');count++;
  for(let shape=0;shape<4;shape++){state=await request('appearance',{shape,property:'Scale',value:2+shape});assert(state.appearances[shape].Scale===2+shape,'Independent scale failed');count++;}

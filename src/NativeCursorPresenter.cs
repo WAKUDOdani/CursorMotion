@@ -67,11 +67,6 @@ internal sealed class NativeCursorPresenter : IDisposable
     }
     public nint CreatePrivateCursor(byte[] pixels, int newWidth, int newHeight, int hotX, int hotY)
     {
-        using var scaling = CursorPixelScaling.Enter();
-        return CreatePhysicalCursor(pixels, newWidth, newHeight, hotX, hotY);
-    }
-    nint CreatePhysicalCursor(byte[] pixels, int newWidth, int newHeight, int hotX, int hotY)
-    {
         if (newWidth <= 0 || newHeight <= 0 || newWidth > 2048 || newHeight > 2048 || pixels.Length != newWidth * newHeight * 4
             || hotX < 0 || hotX >= newWidth || hotY < 0 || hotY >= newHeight) throw new ArgumentException("Invalid native frame bounds/hotspot");
         if (width != newWidth || height != newHeight || color == 0)
@@ -107,11 +102,10 @@ internal sealed class NativeCursorPresenter : IDisposable
     }
     internal nint[] CreatePublication(byte[] pixels, int width, int height, int hotX, int hotY, int count)
     {
-        using var scaling = CursorPixelScaling.Enter();
         var handles = new nint[count];
         try
         {
-            handles[0] = CreatePhysicalCursor(pixels, width, height, hotX, hotY);
+            handles[0] = CreatePrivateCursor(pixels, width, height, hotX, hotY);
             for (int i = 1; i < count; i++)
             {
                 handles[i] = Native.CopyImage(handles[0], 2, 0, 0, 0);
@@ -121,6 +115,12 @@ internal sealed class NativeCursorPresenter : IDisposable
         }
         catch { foreach (nint handle in handles) if (handle != 0) Native.DestroyCursor(handle); throw; }
     }
+    internal NativeCursorFile.Sprite? PrepareFrame(byte[] pixels, Native.Rect bounds, bool requested, uint vendorId)
+    {
+        bool compact = NativeCursorLimits.UseCompact(requested, vendorId);
+        return compact ? captureSprite.Prepare(pixels, bounds, NativeCursorLimits.RequiresCompact(vendorId))
+            : new NativeCursorFile.Sprite(bounds.Width, bounds.Height, -bounds.Left, -bounds.Top, pixels);
+    }
     public bool Present(GpuRenderer renderer, Native.Rect bounds, uint role, bool captureCompatibility = false)
     {
         // Windows changes role before our next tick. Keep the primary slots on the
@@ -128,8 +128,7 @@ internal sealed class NativeCursorPresenter : IDisposable
         // Roles remain separate HCURSORs, allowing detection without input hooks.
         uint[] targets = PrimaryRoles.Where(r => r != role).Append(role).ToArray();
         byte[] pixels = renderer.Pixels(bounds.Width, bounds.Height);
-        var sprite = captureCompatibility ? captureSprite.Prepare(pixels, bounds)
-            : new NativeCursorFile.Sprite(bounds.Width, bounds.Height, -bounds.Left, -bounds.Top, pixels);
+        var sprite = PrepareFrame(pixels, bounds, captureCompatibility, renderer.AdapterVendorId);
         if (sprite == null) return false;
         var handles = CreatePublication(sprite.Pixels, sprite.Width, sprite.Height, sprite.HotX, sprite.HotY, targets.Length);
         try

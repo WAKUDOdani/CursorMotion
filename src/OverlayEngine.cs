@@ -26,6 +26,7 @@ internal sealed class OverlayEngine : IDisposable
     public double ActualFps { get; private set; }
     public string Diagnostics { get; private set; } = "Starting";
     public string Presentation { get; private set; } = "Starting";
+    public bool CompactCursorRequired { get; private set; }
     public OverlayEngine(Settings initial, Func<double, CursorInput>? inputProvider = null, bool startThread = true)
     {
         settings = RuntimeSettings(initial); this.inputProvider = inputProvider;
@@ -41,6 +42,7 @@ internal sealed class OverlayEngine : IDisposable
         try
         {
             using var renderer = new GpuRenderer();
+            CompactCursorRequired = renderer.RequiresCompactNativeCursor;
             using var presenter = new NativeCursorPresenter();
             timer = Native.CreateWaitableTimerEx(0, null, 2, 0x1F0003);
             if (timer == 0) throw Native.Error("CreateWaitableTimerEx — требуется Windows 10 версии 1803 или новее");
@@ -138,7 +140,7 @@ internal sealed class OverlayEngine : IDisposable
                         RenderedFrames++; fpsFrames++;
                     }
                     previousRole = role;
-                    Presentation = limited ? "Windows system cursor (extreme motion bounds limited)" : s.CaptureCompatibility
+                    Presentation = limited ? "Windows system cursor (extreme motion bounds limited)" : (s.CaptureCompatibility || CompactCursorRequired)
                         ? "GPU system cursor; compact capture frames <=256px" : "GPU frames in Windows system cursor";
                 }
                 else

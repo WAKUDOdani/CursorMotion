@@ -20,9 +20,11 @@ internal static class CaptureSpriteChecks
                 Vector2.Zero, 2.9f, .3f, shape, (shape + 1) % 4, .42f, .37f, 1, moving ? 64 : 1, true);
             var bounds = NativeCursorPresenter.Bounds(frame, s);
             gpu.Render(frame, s, bounds); var source = gpu.Pixels(bounds.Width, bounds.Height);
-            var sprite = compact.Prepare(source, bounds);
+            // Exercise the ACTUAL publication preparation with a legacy profile
+            // that explicitly disables compatibility. NVIDIA must stay bounded.
+            var sprite = presenter.PrepareFrame(source, bounds, false, 0x10DE);
             Require(sprite != null, "Current-size lossless frame exceeded capture budget");
-            Require(sprite!.Width is 64 or 128 or 256 && sprite.Width == sprite.Height, "Unsupported capture format");
+            Require(sprite!.Width == 256 && sprite.Height == 256, "NVIDIA cursor dimensions changed between frames");
             // Compare in HOTSPOT coordinates, including all zero pixels in the
             // destination: no resize, dimming, clipping or position displacement.
             for (int y = 0; y < bounds.Height; y++) for (int x = 0; x < bounds.Width; x++)
@@ -48,6 +50,24 @@ internal static class CaptureSpriteChecks
         for (int p = 3; p < oversized.Length; p += 4) oversized[p] = 255;
         Require(compact.Prepare(oversized, new() { Left = -256, Top = -256, Right = 256, Bottom = 256 }) == null,
             "Oversized image escaped the capture safety limit");
+        Require(presenter.PrepareFrame(oversized, new() { Left = -256, Top = -256, Right = 256, Bottom = 256 }, false, 0x10DE) == null,
+            "Legacy profile bypasses actual NVIDIA publication budget");
+        // The user's maximum-size arrow must fit WITHOUT scaling. When motion
+        // exceeds the budget the engine uses the intact static glyph instead.
+        var maximum = new Settings { Scale = 6 };
+        var maximumFrame = new RenderFrame(Vector2.Zero, Vector2.Zero, Vector2.Zero, 6, 0, 0, 0, 1, 0, 1, 1, true);
+        var maximumBounds = NativeCursorPresenter.Bounds(maximumFrame, maximum);
+        gpu.Render(maximumFrame, maximum, maximumBounds);
+        var maximumPixels = gpu.Pixels(maximumBounds.Width, maximumBounds.Height);
+        var maximumSprite = presenter.PrepareFrame(maximumPixels, maximumBounds, false, 0x10DE);
+        Require(maximumSprite is { Width: 256, Height: 256 }, "Maximum-size static arrow cannot be published intact");
+        for (int y = 0; y < maximumBounds.Height; y++) for (int x = 0; x < maximumBounds.Width; x++)
+        {
+            int i = (y * maximumBounds.Width + x) * 4; if (maximumPixels[i + 3] == 0) continue;
+            int nx = x + maximumBounds.Left + maximumSprite!.HotX, ny = y + maximumBounds.Top + maximumSprite.HotY;
+            Require(nx >= 0 && ny >= 0 && nx < 256 && ny < 256, "Maximum arrow clipped");
+            for (int c = 0; c < 4; c++) Require(maximumPixels[i + c] == maximumSprite.Pixels[(ny * 256 + nx) * 4 + c], "Maximum arrow was rescaled");
+        }
         var cached = new FramePolicy(); var settings = new Settings();
         var still = new RenderFrame(Vector2.Zero, Vector2.Zero, Vector2.Zero, 1.6f, 0, 0, 0, 1, 0, 1, 1, true);
         var rectangle = NativeCursorPresenter.Bounds(still, settings);
@@ -55,7 +75,8 @@ internal static class CaptureSpriteChecks
         Require(cached.NeedsRender(still, settings with { CaptureCompatibility = true }, rectangle), "Stationary capture toggle ignored");
         Require(cached.NeedsRender(still, settings, rectangle), "Stationary normal toggle ignored");
         File.WriteAllText(Path.Combine(output, "capture-sprites.json"), JsonSerializer.Serialize(new {
-            pass = true, records, maxNativeSide = 256, noGlobalChanges = true, noPixelScaling = true, nvidiaConfirmed = false
+            pass = true, records, maxNativeSide = 256, stableNvidiaCanvas = true, maximumArrowIntact = true,
+            legacyProfileCannotBypass = true, noGlobalChanges = true, noPixelScaling = true, nvidiaConfirmed = false
         }, new JsonSerializerOptions { WriteIndented = true }));
     }
 }

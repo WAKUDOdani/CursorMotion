@@ -59,6 +59,8 @@ internal sealed unsafe class GpuRenderer : IDisposable
         File.WriteAllBytes(Path.Combine(directory, "Pixel.cso"), hash.Concat(ShaderCode.Value.Pixel).ToArray());
     }
     public string AdapterName { get; }
+    public uint AdapterVendorId { get; }
+    public bool RequiresCompactNativeCursor => NativeCursorLimits.RequiresCompact(AdapterVendorId);
     internal static bool AllowSoftwareForDiagnostics { get; set; }
     internal static bool ForceSoftwareForDiagnostics { get; set; }
     public GpuRenderer()
@@ -73,7 +75,8 @@ internal sealed unsafe class GpuRenderer : IDisposable
         }
         result.CheckError();
         using (var dxgi = device.QueryInterface<IDXGIDevice>())
-        using (var adapter = dxgi.GetAdapter()) AdapterName = adapter.Description.Description;
+        using (var adapter = dxgi.GetAdapter())
+        { var description = adapter.Description; AdapterName = description.Description; AdapterVendorId = description.VendorId; }
         vertex = device.CreateVertexShader(ShaderCode.Value.Vertex);
         pixel = device.CreatePixelShader(ShaderCode.Value.Pixel);
         constantBuffer = device.CreateBuffer(new BufferDescription { ByteWidth = (uint)sizeof(Constants), BindFlags = BindFlags.ConstantBuffer, Usage = ResourceUsage.Default });

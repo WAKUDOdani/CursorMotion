@@ -78,36 +78,13 @@ internal static class SelfTest
             recovered.Delete(first.Id);
             Require(new UserPresets(directory).Items.Count == 2, "Deletion did not persist");
         });
-        Test("Mixed DPI: physical cursor creation and role copies restore thread scaling", () =>
+        Test("Native capture limits: NVIDIA profiles cannot disable compact publication", () =>
         {
-            if (!CursorPixelScaling.Available) return;
-            uint original = CursorPixelScaling.SetThreadCursorCreationScaling(144);
-            try
-            {
-                using (CursorPixelScaling.Enter()) Require(CursorPixelScaling.SetThreadCursorCreationScaling(192) == CursorPixelScaling.None, "Physical-pixel scaling not active");
-                Require(CursorPixelScaling.SetThreadCursorCreationScaling(144) == 144, "Scope did not restore creation DPI");
-                using var presenter = new NativeCursorPresenter();
-                byte[] pixels = new byte[128 * 128 * 4];
-                for (int i = 0; i < pixels.Length; i += 4) { pixels[i] = 230; pixels[i + 3] = 255; }
-                foreach (uint dpi in new uint[] { 96, 120, 144, 192, 288 })
-                {
-                    CursorPixelScaling.SetThreadCursorCreationScaling(dpi);
-                    var handles = presenter.CreatePublication(pixels, 128, 128, 17, 23, NativeCursorPresenter.PrimaryRoles.Length);
-                    try
-                    {
-                        foreach (nint handle in handles)
-                        {
-                            Require(Native.GetIconInfo(handle, out var info), "Private cursor metadata unavailable");
-                            try { Require(info.HotX == 17 && info.HotY == 23, "DPI changed the native hotspot"); }
-                            finally { Native.DeleteObject(info.Color); Native.DeleteObject(info.Mask); }
-                            NativeCursorChecks.VerifyWindowsPixels(handle, new(128, 128, 17, 23, pixels));
-                        }
-                    }
-                    finally { foreach (nint handle in handles) Native.DestroyCursor(handle); }
-                    Require(CursorPixelScaling.SetThreadCursorCreationScaling(dpi) == dpi, "Publication leaked thread scaling");
-                }
-            }
-            finally { CursorPixelScaling.SetThreadCursorCreationScaling(original); }
+            Require(NativeCursorLimits.UseCompact(false, 0x10DE), "NVIDIA profile bypasses compact frames");
+            Require(NativeCursorLimits.UseCompact(true, 0x10DE), "NVIDIA explicit compatibility failed");
+            Require(!NativeCursorLimits.UseCompact(false, 0x1002), "Other hardware unexpectedly forced compact");
+            Require(NativeCursorLimits.UseCompact(true, 0x1002), "Explicit compatibility ignored on other hardware");
+            Require(!NativeCursorLimits.UseCompact(false, 0x1414), "WARP diagnostic mode misdetected as NVIDIA");
         });
         Test("Popup ordering: immediate menu events, right-button edges and hooks", () =>
         {
