@@ -15,6 +15,19 @@ internal static class Program
             if (args.Contains("--enable-autostart")) { StartupRegistration.Enabled = true; return 0; }
             if (args.Contains("--disable-autostart")) { StartupRegistration.Enabled = false; return 0; }
             if (args.Contains("--backend")) return BackendServer.Run(args);
+            if (args.Contains("--capture-budget-probe"))
+            {
+                if (!args.Contains("--offscreen")) throw new ArgumentException("Budget probe is offscreen-only");
+                NativeCaptureBudgetProbe.Run(args[Array.IndexOf(args, "--profile") + 1], args[Array.IndexOf(args, "--output") + 1]); return 0;
+            }
+            if (args.Contains("--monitor-info"))
+            { Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(Native.Displays().Select(d => new { d.Primary, d.Dpi, d.Bounds.Width, d.Bounds.Height }))); return 0; }
+            if (args.Contains("--pointer-shape-probe"))
+            {
+                if (!args.Contains("--diagnostic")) throw new ArgumentException("Pointer probe is manual/diagnostic-only");
+                int i = Array.IndexOf(args, "--output");
+                PointerShapeProbe.Run(i >= 0 ? args[i + 1] : "pointer-probe", args.Contains("--wait-secondary")); return 0;
+            }
             if (args.Contains("--transition-check")) { int i = Array.IndexOf(args, "--output"); TransitionChecks.Run(i >= 0 ? args[i + 1] : "transitions", args.Contains("--enforce")); return 0; }
             if (args.Contains("--fx-readability-check")) { int i = Array.IndexOf(args, "--output"); FxReadabilityChecks.Run(i >= 0 ? args[i + 1] : "fx-readability", args.Contains("--enforce")); return 0; }
             if (args.Contains("--native-temporal-check")) { int i = Array.IndexOf(args, "--output"); NativeTemporalChecks.Run(i >= 0 ? args[i + 1] : "native-temporal"); return 0; }

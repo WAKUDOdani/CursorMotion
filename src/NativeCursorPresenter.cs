@@ -12,6 +12,8 @@ internal sealed class NativeCursorPresenter : IDisposable
     byte[] straightPixels = Array.Empty<byte>();
     byte[] maskPixels = Array.Empty<byte>();
     readonly CaptureSprite captureSprite = new();
+    internal int RequiredWidth => captureSprite.RequiredWidth;
+    internal int RequiredHeight => captureSprite.RequiredHeight;
     static readonly uint[] roles = { 32512, 32513, 32514, 32650, 32515, 32516, 32642, 32643, 32644, 32645, 32646, 32648, 32649 };
     readonly nint[] shared = new nint[roles.Length];
     internal static readonly uint[] PrimaryRoles = { 32512, 32513, 32514, 32650, 32649, 32644, 32645, 32642, 32643 };
@@ -115,10 +117,10 @@ internal sealed class NativeCursorPresenter : IDisposable
         }
         catch { foreach (nint handle in handles) if (handle != 0) Native.DestroyCursor(handle); throw; }
     }
-    internal NativeCursorFile.Sprite? PrepareFrame(byte[] pixels, Native.Rect bounds, bool requested, uint vendorId)
+    internal NativeCursorFile.Sprite? PrepareFrame(byte[] pixels, Native.Rect bounds, bool requested, uint vendorId, int? maximumSide = null)
     {
         bool compact = NativeCursorLimits.UseCompact(requested, vendorId);
-        return compact ? captureSprite.Prepare(pixels, bounds, NativeCursorLimits.RequiresCompact(vendorId))
+        return compact ? captureSprite.Prepare(pixels, bounds, NativeCursorLimits.RequiresCompact(vendorId), maximumSide ?? NativeCursorLimits.NativeSide)
             : new NativeCursorFile.Sprite(bounds.Width, bounds.Height, -bounds.Left, -bounds.Top, pixels);
     }
     public bool Present(GpuRenderer renderer, Native.Rect bounds, uint role, bool captureCompatibility = false)

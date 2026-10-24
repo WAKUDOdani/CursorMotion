@@ -23,6 +23,9 @@ internal sealed class OverlayEngine : IDisposable
     public string? Failure { get; private set; }
     public double RenderMilliseconds { get; private set; }
     public long RenderedFrames { get; private set; }
+    public long NativeBudgetMisses { get; private set; }
+    public int PeakCursorWidth { get; private set; }
+    public int PeakCursorHeight { get; private set; }
     public double ActualFps { get; private set; }
     public string Diagnostics { get; private set; } = "Starting";
     public string Presentation { get; private set; } = "Starting";
@@ -131,8 +134,12 @@ internal sealed class OverlayEngine : IDisposable
                     {
                         double start = clock.Elapsed.TotalMilliseconds;
                         renderer.Render(frame, s, bounds);
-                        if (!presenter.Present(renderer, bounds, role, s.CaptureCompatibility))
+                        bool published = presenter.Present(renderer, bounds, role, s.CaptureCompatibility);
+                        PeakCursorWidth = Math.Max(PeakCursorWidth, presenter.RequiredWidth);
+                        PeakCursorHeight = Math.Max(PeakCursorHeight, presenter.RequiredHeight);
+                        if (!published)
                         {
+                            NativeBudgetMisses++;
                             // Keep the full-size glyph when an extreme blur exceeds
                             // the capture budget. Never publish a >256px cursor here.
                             var still = StaticFrame(s, shape, (float)now);

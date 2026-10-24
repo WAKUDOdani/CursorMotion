@@ -24,9 +24,9 @@ Apply appearance drafts with the apply button. Switching pages alone does not ap
 
 ## Recording
 
-For NVIDIA cursor corruption, enable **«Пространство → Движок и профиль → Совместимость с NVIDIA»**. This trims transparent padding and uses compact cursor frames without scaling the glyph. An exceptionally long blur is replaced by the full-size static shape when it does not fit. If even the static shape with its shadow is too large, the app asks for a smaller size or shadow instead of submitting an oversized frame. Ordinary mode does not have these recording limits.
+In 3.10, **«Пространство → Движок и профиль → Ограничение для записи»** is enforced automatically on NVIDIA: native frames remain within 256×256 pixels, without resizing the cursor. An exposure that does not fit is replaced by the intact static glyph. This bounds the data submitted to the capture pipeline, but does not guarantee a correct cursor in NVIDIA App recordings.
 
-The user confirmed correct NVIDIA recordings and a single Discord pointer on Windows 11 / RTX 4070. Other capture paths and driver versions may differ.
+Current live checks found correct NVIDIA cursor capture at 128×128, while 192×192 and 256×256 distorted the recorded pointer. A 128×128 limit can omit long motion effects; the accepted full-motion build therefore retains 256×256. Full NVIDIA compatibility remains unresolved. Discord was separately reported to show a single pointer.
 
 ## Tray and startup
 

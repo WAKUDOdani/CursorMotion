@@ -68,6 +68,23 @@ internal static class CaptureSpriteChecks
             Require(nx >= 0 && ny >= 0 && nx < 256 && ny < 256, "Maximum arrow clipped");
             for (int c = 0; c < 4; c++) Require(maximumPixels[i + c] == maximumSprite.Pixels[(ny * 256 + nx) * 4 + c], "Maximum arrow was rescaled");
         }
+        // The intermediate capture probe must preserve the real maximum-size
+        // glyph, including its shadow and hotspot, without any DPI workaround.
+        var intermediate = presenter.PrepareFrame(maximumPixels, maximumBounds, false, 0x10DE, 192);
+        Require(intermediate is { Width: 192, Height: 192 }, "Maximum-size arrow does not fit the 192px probe");
+        for (int y = 0; y < maximumBounds.Height; y++) for (int x = 0; x < maximumBounds.Width; x++)
+        {
+            int i = (y * maximumBounds.Width + x) * 4;
+            if (maximumPixels[i + 3] == 0) continue;
+            int nx = x + maximumBounds.Left + intermediate!.HotX, ny = y + maximumBounds.Top + intermediate.HotY;
+            Require(nx >= 0 && ny >= 0 && nx < 192 && ny < 192, "192px probe clipped the maximum arrow");
+            for (int c = 0; c < 4; c++) Require(maximumPixels[i + c] == intermediate.Pixels[(ny * 192 + nx) * 4 + c], "192px probe rescaled the arrow");
+        }
+        var intermediateHandles = presenter.CreatePublication(intermediate!.Pixels, 192, 192, intermediate.HotX, intermediate.HotY, 9);
+        try { foreach (var handle in intermediateHandles) { NativeCursorChecks.VerifyWindowsPixels(handle, intermediate); NativeCursorChecks.VerifyWindowsMask(handle, intermediate); } }
+        finally { foreach (var handle in intermediateHandles) Native.DestroyCursor(handle); }
+        Require(presenter.PrepareFrame(oversized, new() { Left = -256, Top = -256, Right = 256, Bottom = 256 }, false, 0x10DE, 192) == null,
+            "Intermediate probe exceeded its budget");
         var cached = new FramePolicy(); var settings = new Settings();
         var still = new RenderFrame(Vector2.Zero, Vector2.Zero, Vector2.Zero, 1.6f, 0, 0, 0, 1, 0, 1, 1, true);
         var rectangle = NativeCursorPresenter.Bounds(still, settings);

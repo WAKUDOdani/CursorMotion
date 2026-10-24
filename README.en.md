@@ -59,7 +59,7 @@ First launch extracts components to an AppData cache. Later launches reuse verif
 ## Things to know
 
 - Windows presents the cursor through its system mechanism, above ordinary windows, notifications, and context menus. Application-drawn pointers can retain their own appearance.
-- NVIDIA recording mode is under **«Пространство → Движок и профиль → Совместимость с NVIDIA»**. It trims transparent frame padding without scaling the glyph. An exceptionally long blur is temporarily omitted if it does not fit. Ordinary mode has no such limit.
+- NVIDIA App can distort large cursors or long trails in recordings. **«Пространство → Движок и профиль → Ограничение для записи»** bounds native frame sizes, but does not yet guarantee correct recording in every case.
 - Settings are at `%LOCALAPPDATA%\CursorMotion\settings.json`. Use profile export/import to transfer them to another PC.
 - Startup is opt-in. After moving the EXE, toggle startup off and on to update its path.
 - Pause and exit restore the registered Windows scheme. A separate watchdog monitors cursor recovery when the engine stops.
