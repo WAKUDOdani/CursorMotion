@@ -104,7 +104,10 @@ internal static class Native
         finally { CloseDesktop(desktop); }
     }
     internal static Exception Error(string action) => new Win32Exception(Marshal.GetLastWin32Error(), action);
-    internal sealed record Display(Rect Bounds, bool Primary)
+    [DllImport("shcore.dll")] static extern int GetDpiForMonitor(nint monitor, int type, out uint x, out uint y);
+    [DllImport("user32.dll")] internal static extern uint GetDpiForSystem();
+    [DllImport("user32.dll")] internal static extern int GetSystemMetricsForDpi(int index, uint dpi);
+    internal sealed record Display(Rect Bounds, bool Primary, uint Dpi = 96)
     {
         public override string ToString() => $"{Bounds.Width} × {Bounds.Height} · ({Bounds.Left}, {Bounds.Top}){(Primary ? " · основной" : "")}";
     }
@@ -114,7 +117,11 @@ internal static class Native
         EnumDisplayMonitors(0, 0, (nint monitor, nint dc, ref Rect rect, nint data) =>
         {
             MonitorInfo info = new() { Size = Marshal.SizeOf<MonitorInfo>() };
-            if (GetMonitorInfo(monitor, ref info)) result.Add(new(info.Monitor, (info.Flags & 1) != 0));
+            if (GetMonitorInfo(monitor, ref info))
+            {
+                uint dpi = GetDpiForMonitor(monitor, 0, out uint x, out _) == 0 && x >= 96 ? x : GetDpiForSystem();
+                result.Add(new(info.Monitor, (info.Flags & 1) != 0, dpi));
+            }
             return true;
         }, 0);
         if (result.Count == 0) throw new InvalidOperationException("Не удалось получить список мониторов.");

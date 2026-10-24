@@ -224,6 +224,13 @@ float4 cursor_at(float2 px, float2 pos, float k)
 	                   -tilt_cs.y * d.x + tilt_cs.x * d.y) / cur_scale;
 
 	float2 s     = shape_mix(lp);
+	if (Skins.w > 1.0) {
+		// A target pixel covers a square: diagonal edges and corners span a
+		// wider SDF interval than vertical edges. Use the actual shape gradient,
+		// rather than only the screen-coordinate derivative from PSMain.
+		float edge_width = abs(ddx(s.x)) + abs(ddy(s.x));
+		k = min(k, rcp(max(edge_width, 1.0 / cur_scale) * Skins.w));
+	}
 	float  outer = saturate(0.5 - (s.x - outline_width) * k);
 	float  inner = saturate(0.5 - s.x * k) * s.y;
 
@@ -268,6 +275,9 @@ float4 PSMain(float4 screen : SV_POSITION) : SV_TARGET
 	float2 px = box_origin + screen.xy;
 	float2 fw = abs(ddx(px)) + abs(ddy(px));
 	float  k  = cur_scale / max(max(fw.x, fw.y), 0.0001);
+	// Coverage for the monitor's final cursor pixels, before Windows scales the
+	// native bitmap. The primary monitor uses the original branch unchanged.
+	if (Skins.w > 1.0) k /= Skins.w;
 
 	int n = int(min(sample_count, 128.0));
 	float4 acc  = float4(0.0, 0.0, 0.0, 0.0);

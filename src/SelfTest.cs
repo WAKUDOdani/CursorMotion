@@ -86,6 +86,7 @@ internal static class SelfTest
             Require(NativeCursorLimits.UseCompact(true, 0x1002), "Explicit compatibility ignored on other hardware");
             Require(!NativeCursorLimits.UseCompact(false, 0x1414), "WARP diagnostic mode misdetected as NVIDIA");
         });
+        Test("Monitor vector edges: destination coverage, unchanged silhouette/opacity and primary pixels", () => CursorRasterQualityChecks.Run(output));
         Test("Popup ordering: immediate menu events, right-button edges and hooks", () =>
         {
             var policy = new TopmostPolicy();

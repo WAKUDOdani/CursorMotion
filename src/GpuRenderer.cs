@@ -15,6 +15,7 @@ namespace CursorMotion;
 
 internal sealed unsafe class GpuRenderer : IDisposable
 {
+    internal float NativePixelFootprint { get; set; } = 1;
     [StructLayout(LayoutKind.Sequential)] struct Constants
     {
         public Vector4 Box, Path0, Path1, Motion, Shape, Fill, Outline, Shadow, Look, Skins;
@@ -142,7 +143,7 @@ internal sealed unsafe class GpuRenderer : IDisposable
             Outline = Vector4.Lerp(Color(a.OutlineColor), Color(b.OutlineColor), f.Morph),
             Shadow = Vector4.Lerp(Color(a.ShadowColor), Color(b.ShadowColor), f.Morph),
             Look = new(Blend(a.OutlineWidth, b.OutlineWidth), Blend(a.ShadowBlur, b.ShadowBlur), Blend(a.ShadowX, b.ShadowX), Blend(a.ShadowY, b.ShadowY)),
-            Skins = new(a.Skin, b.Skin, f.LockHead ? 1 : 0, 0)
+            Skins = new(a.Skin, b.Skin, f.LockHead ? 1 : 0, NativePixelFootprint)
         };
         context.UpdateSubresource(constantBuffer, 0, null, (nint)(&c), 0, 0);
         context.Draw(3, 0);

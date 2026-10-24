@@ -56,6 +56,7 @@ internal sealed class OverlayEngine : IDisposable
             bool previousEnabled = false, desktop = true, previousVisible = false;
             int themeGeneration = -1;
             uint previousRole = 0;
+            float previousFootprint = 1;
             long lastDisplays = 0;
             long lastDescribe = 0; string cursorDescription = "";
             var clock = Stopwatch.StartNew();
@@ -85,6 +86,7 @@ internal sealed class OverlayEngine : IDisposable
                     Diagnostics = $"enabled={enabled}; desktop={desktop}";
                     nativeTheme.Restore(); cancel.Wait(25); continue;
                 }
+                renderer.NativePixelFootprint = 1;
                 nativeTheme.Ensure(s, renderer);
                 if (themeGeneration != nativeTheme.Generation)
                 {
@@ -114,6 +116,9 @@ internal sealed class OverlayEngine : IDisposable
                 var simulated = simulation.Step(dt, new(raw, visible && inside, shape, pressed), s, nativeEffects: true);
                 if (visible)
                 {
+                    float footprint = CursorRasterQuality.ForMonitor(displays, ci.Position);
+                    if (footprint != previousFootprint) { framePolicy.Invalidate(); previousFootprint = footprint; }
+                    renderer.NativePixelFootprint = footprint;
                     // The head stays on Windows' real hotspot continuously.
                     // The spring filters exposure and tilt, not the native image position.
                     var frame = NativeCursorPresenter.Anchored(simulated);
