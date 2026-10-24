@@ -1,0 +1,62 @@
+name: Release Windows
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build and verify
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+      - name: Check tag matches native and launcher versions
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          $native=([xml](Get-Content -Raw src/CursorMotion.csproj)).Project.PropertyGroup.Version
+          $launcher=([xml](Get-Content -Raw bootstrap/CursorMotion.Bootstrap.csproj)).Project.PropertyGroup.Version
+          if($env:RELEASE_TAG -ne "v$native" -or $native -ne $launcher){throw 'Tag/version mismatch'}
+          if((git rev-parse HEAD) -ne (git rev-parse "$($env:RELEASE_TAG)^{}")){throw 'Tag/checkout mismatch'}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/renderer/package-lock.json
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - run: pwsh ./prepare-build.ps1
+      - run: npm ci --prefix desktop/renderer
+      - run: dotnet run --project bootstrap-tests/Bootstrap.Tests.csproj -c Release
+      - run: pwsh ./build.ps1 -SkipTests -OutputDirectory ./artifacts/folder
+      - run: pwsh ./tools/check-folder.ps1 -Directory ./artifacts/folder -OutputDirectory ./artifacts/checks
+      - run: pwsh ./build-single-file.ps1 -InputDirectory ./artifacts/folder
+      - name: Verify the actual portable EXE
+        shell: pwsh
+        run: |
+          $version=([xml](Get-Content -Raw src/CursorMotion.csproj)).Project.PropertyGroup.Version
+          & ./tools/verify-package.ps1 -Executable "./dist/single-file/CursorMotion-$version-portable-x64.exe" -OutputDirectory ./artifacts/package-checks
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cursormotion-windows
+          path: |
+            dist/single-file/*.exe
+            dist/single-file/SHA256SUMS.txt
+            artifacts/package-checks/package-verification.json
+          compression-level: 0
+          if-no-files-found: error
+      # Publishing is a separate maintainer action, using the accepted bytes.

@@ -1,0 +1,109 @@
+.topbar { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 24px; min-height: 134px; padding: 34px 42px 24px; }
+.navigation { width: max-content; max-width: 100%; justify-self: center; gap: 4px; height: 76px; padding: 8px; }
+.navigation button { flex: 0 0 auto; height: 58px; padding: 0 26px; gap: 12px; font-size: 17px; font-weight: 500; }
+.navigation .nav-active { font-weight: 600; }
+.nav-lens { left: 0; top: 0; height: 58px; transition: transform .5s var(--ease),width .5s var(--ease),height .5s var(--ease); }
+.effect-control { grid-column: auto; position: static; justify-self: end; }
+
+.page-collection { max-width: 1600px; padding: 10px 60px 80px; }
+.page-collection .page-heading { margin-bottom: 8px; }
+.page-collection .page-heading h1 { font-size: 64px; letter-spacing: -2.7px; line-height: 1.08; margin-bottom: 10px; }
+.page-collection .page-heading p { font-size: 20px; line-height: 1.5; }
+.page-collection .gallery { max-width: none; column-gap: 44px; row-gap: 28px; margin: 0 0 28px; }
+.page-collection .specimen { display: grid; grid-template-rows: minmax(0,1fr) 68px; align-items: stretch; justify-content: stretch; padding: 0; }
+.page-collection .specimen-stage { height: 100%; }
+.page-collection .specimen-stage .artwork-space { padding: 20px 30px; }
+.collection-illustration .illustration-canvas { width: min(100cqw,222.222222cqh); aspect-ratio: 20 / 9; }
+.page-collection .cursor-artwork { transform: none; backface-visibility: visible; }
+.page-collection .artwork-space[data-tilted=true] .cursor-artwork { transform: translateY(var(--lift,0)) rotateX(var(--rotate-x,0deg)) rotateY(var(--rotate-y,0deg)); }
+.page-collection .specimen:hover .cursor-artwork { filter: none; }
+.reduced-motion .page-collection .cursor-artwork { transform: none!important; }
+.page-collection .specimen-copy { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 5px; padding: 6px 8px 0; }
+.page-collection .specimen-title { display: flex; position: relative; width: fit-content; min-height: 32px; margin: 0 auto; font-size: 26px; line-height: 32px; letter-spacing: -.8px; }
+.page-collection .specimen-title>span:first-child { grid-row: auto; }
+.page-collection .is-selected .specimen-title { color: #0076e8; }
+.page-collection .specimen-description { width: auto; max-width: 100%; min-height: 0; margin: 0; font-size: 16px; line-height: 23px; letter-spacing: -.25px; }
+.pack-check { position: absolute; left: calc(100% + 9px); top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 28px; height: 28px; color: #0072e5; border: 1px solid #9ed6ffb3; border-radius: 50%; background: #d3edff85; box-shadow: inset 0 1px 2px #fff9; }
+.page-collection .selection-lens { background: #e9f6ff1f; box-shadow: inset 0 3px 7px #fff,inset 0 -4px 9px #9ed8ff70,0 0 0 3px #ffffffd9,0 0 0 6px #e7f6ff70,0 6px 20px #78abea20; }
+.page-collection .action-dock { width: min(910px,100%); min-height: 118px; margin: 0 auto; padding: 16px 22px 16px 30px; gap: 24px; border-radius: 999px; flex-wrap: nowrap; }
+.page-collection .dock-art { width: 180px; height: 78px; flex-shrink: 0; }
+.page-collection .dock-divider { height: 58px; }
+.page-collection .dock-copy { min-width: 0; gap: 7px; }
+.page-collection .dock-title { font-size: 25px; line-height: 1.2; }
+.page-collection .dock-description { font-size: 16px; }
+.page-collection .primary-button { flex: none; flex-basis: auto; min-width: 310px; min-height: 68px; margin: 0; font-size: 22px; padding: 16px 26px; }
+.page-collection .primary-button:not(.is-applied) { background-color: #0084f5; }
+
+@media (max-width:1280px) and (min-width:1101px) {
+  .topbar { grid-template-columns: 200px minmax(0,1fr) 200px; gap: 18px; padding-inline: 28px; }
+  .navigation { width: 100%; max-width: 740px; }
+  .navigation button { flex: 1 1 auto; min-width: 0; padding-inline: 14px; gap: 10px; font-size: 14px; }
+  .effect-control>span { display: none; }
+  .page-collection { padding-inline: 40px; }
+  .page-collection .gallery { column-gap: 28px; }
+  .page-collection .specimen-title { font-size: 24px; }
+  .page-collection .specimen-description { font-size: 14px; }
+}
+@media (min-width:1101px) {
+  .studio[data-page=collection] { --collection-growth: clamp(0px,calc(100dvh - 800px),258px); }
+  .page-collection { padding-top: calc(4px + var(--collection-growth) * .0233); padding-bottom: calc(24px + var(--collection-growth) * .217); }
+  .page-collection .page-heading h1 { font-size: calc(46px + var(--collection-growth) * .0698); margin-bottom: calc(7px + var(--collection-growth) * .0116); }
+  .page-collection .page-heading p { font-size: calc(17px + var(--collection-growth) * .0116); }
+  .page-collection .gallery { row-gap: calc(14px + var(--collection-growth) * .0543); margin-bottom: calc(20px + var(--collection-growth) * .031); }
+  .page-collection .specimen { grid-template-rows: minmax(0,1fr) calc(58px + var(--collection-growth) * .0388); }
+  .page-collection .specimen-stage .artwork-space { padding: calc(16px + var(--collection-growth) * .0155) calc(38px - var(--collection-growth) * .031); }
+  .page-collection .specimen-copy { gap: calc(2px + var(--collection-growth) * .0116); padding-top: calc(4px + var(--collection-growth) * .00775); }
+  .page-collection .specimen-title { font-size: calc(22px + var(--collection-growth) * .0155); line-height: calc(29px + var(--collection-growth) * .0116); min-height: calc(29px + var(--collection-growth) * .0116); }
+  .page-collection .specimen-description { font-size: calc(14px + var(--collection-growth) * .00775); line-height: calc(20px + var(--collection-growth) * .0116); }
+  .page-collection .pack-check { width: calc(24px + var(--collection-growth) * .0155); height: calc(24px + var(--collection-growth) * .0155); }
+  .page-collection .action-dock { min-height: calc(90px + var(--collection-growth) * .1085); padding-block: calc(11px + var(--collection-growth) * .0194); }
+  .page-collection .dock-art { height: calc(64px + var(--collection-growth) * .0543); width: calc(154px + var(--collection-growth) * .1008); }
+  .page-collection .primary-button { min-height: calc(58px + var(--collection-growth) * .0388); min-width: calc(275px + var(--collection-growth) * .1357); font-size: calc(18px + var(--collection-growth) * .0155); }
+}
+@media (max-height:800px) and (min-width:1101px) {
+  .topbar { min-height: 96px; padding-top: 16px; padding-bottom: 16px; }
+  .navigation { height: 64px; padding: 7px; }
+  .navigation button { height: 48px; }
+}
+@media (max-width:1100px) {
+  .topbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; padding: 24px 25px 14px; }
+  .navigation { width: 100%; max-width: 760px; margin-inline: auto; height: 70px; padding: 7px; }
+  .navigation button { flex: 1 1 auto; min-width: 0; height: 54px; padding: 0 18px; gap: 10px; font-size: 15px; }
+  .effect-control>span { display: inline; }
+  .page-collection { padding: 16px 30px 32px; }
+  .page-collection .page-heading h1 { font-size: 48px; letter-spacing: -2px; }
+  .page-collection .page-heading p { font-size: 17px; }
+  .page-collection .gallery { column-gap: 24px; row-gap: 28px; margin: 18px 0 32px; }
+  .page-collection .specimen { grid-template-rows: auto 68px; }
+  .page-collection .specimen-stage { height: clamp(150px,23vw,220px); }
+  .page-collection .specimen-stage .artwork-space { padding: 12px 16px; }
+  .page-collection .specimen-title { font-size: 24px; }
+  .page-collection .specimen-description { font-size: 14px; line-height: 21px; }
+  .page-collection .action-dock { display: grid; grid-template-columns: 130px minmax(0,1fr); gap: 14px 24px; padding: 20px 24px; border-radius: 34px; }
+  .page-collection .dock-art { width: 130px; height: 64px; }
+  .page-collection .dock-divider { display: none; }
+  .page-collection .primary-button { grid-column: 1 / -1; min-width: 0; width: 100%; min-height: 60px; font-size: 18px; }
+}
+@media (max-width:540px) {
+  .topbar { padding: 18px 16px 10px; gap: 18px; }
+  .navigation { height: 66px; padding: 6px; gap: 2px; }
+  .navigation button { height: 52px; flex-direction: column; gap: 5px; padding: 5px 4px; font-size: 10px; }
+  .navigation button svg { width: 20px; height: 20px; }
+  .effect-control>span { font-size: 0; }
+  .page-collection { padding: 14px 16px 28px; }
+  .page-collection .page-heading h1 { font-size: 40px; }
+  .page-collection .page-heading p { font-size: 14px; }
+  .page-collection .gallery { column-gap: 12px; row-gap: 22px; margin-top: 16px; }
+  .page-collection .specimen { grid-template-rows: auto 64px; }
+  .page-collection .specimen-stage { height: 130px; }
+  .page-collection .specimen-stage .artwork-space { padding: 10px 12px; }
+  .page-collection .specimen-copy { gap: 2px; padding: 5px 0 0; }
+  .page-collection .specimen-title { font-size: 18px; line-height: 26px; min-height: 26px; letter-spacing: -.5px; }
+  .page-collection .specimen-description { font-size: 12px; line-height: 18px; }
+  .pack-check { left: calc(100% + 5px); width: 20px; height: 20px; }
+  .pack-check svg { width: 12px; height: 12px; }
+  .page-collection .dock-title { font-size: 23px; }
+  .page-collection .dock-description { font-size: 14px; }
+  .page-collection .action-dock { grid-template-columns: 104px minmax(0,1fr); gap: 14px 18px; padding: 16px; border-radius: 28px; }
+  .page-collection .dock-art { width: 104px; height: 54px; }
+}

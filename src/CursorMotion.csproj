@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>CursorMotion.Engine</AssemblyName>
+    <Version>3.9.0</Version>
+    <FileVersion>3.9.0.0</FileVersion>
+    <InformationalVersion>3.9.0-single-exe-portable</InformationalVersion>
+    <ApplicationIcon>Assets/AppIcon.ico</ApplicationIcon>
+    <RootNamespace>CursorMotion</RootNamespace>
+    <StartupObject>CursorMotion.Program</StartupObject>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageReference Include="Vortice.DirectComposition" Version="3.8.3" />
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <EmbeddedResource Include="Cursor.hlsl" />
+    <EmbeddedResource Include="Assets/*.cso" />
+    <Resource Include="Assets/AppIcon.png" />
+    <Resource Include="Assets/AppIcon.ico" />
+  </ItemGroup>
+</Project>

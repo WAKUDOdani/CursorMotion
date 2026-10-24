@@ -1,0 +1,51 @@
+motion_blur_cursor.lua: Unlicense (public domain). Source is preserved in
+docs/reference/motion_blur_cursor.lua; provenance is documented in docs/UPSTREAM.md.
+Cursor.hlsl adapts its signed distance fields and exposure integration.
+The original LICENSE is included as ORIGINAL-LICENSE.txt.
+
+Vortice.Direct3D11, Vortice.DirectComposition, Vortice.DXGI, Vortice.DirectX, Vortice.Mathematics:
+Copyright (c) Amer Koleci and Contributors. MIT License.
+https://github.com/amerkoleci/Vortice.Windows
+
+SharpGen.Runtime and SharpGen.Runtime.COM:
+Copyright (c) SharpGenTools contributors. MIT License.
+https://github.com/SharpGenTools/SharpGenTools
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Electron 45.0.0: Copyright Electron contributors. MIT license; bundled LICENSE and LICENSES.chromium.html apply to the runtime and Chromium components. https://www.electronjs.org/
+
+Microsoft .NET and Windows Desktop Runtime: Copyright (c) .NET Foundation and Contributors.
+Original runtime package licenses/notices are included in licenses/.
+
+Inter variable 5.3.0: Copyright The Inter Project Authors. SIL Open Font License 1.1; full license bundled at studio/resources/app/ui/assets/Inter-LICENSE.txt. https://github.com/rsms/inter
+
+UI design draws inspiration from WAKUDOdani/WakuShare, supplied by the user. UI implementation is original; no WakuShare application code is bundled.
+
+React, React DOM and Scheduler: Copyright (c) Meta Platforms, Inc. and affiliates.
+MIT License (permission and warranty text above). Full bundled license:
+studio/resources/app/ui/assets/React-LICENSE.txt.
+
+Phosphor Icons React: Copyright (c) 2020 Phosphor Icons.
+MIT License. Full bundled license: studio/resources/app/ui/assets/Phosphor-LICENSE.txt.
+
+Vite and its React plugin are build-time tools only; node_modules is not shipped
+with the desktop application. Locked dependencies are in desktop/renderer/package-lock.json.

@@ -1,0 +1,32 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/renderer/package-lock.json
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - run: pwsh ./prepare-build.ps1
+      - run: npm ci --prefix desktop/renderer
+      - run: dotnet run --project bootstrap-tests/Bootstrap.Tests.csproj -c Release
+      - run: pwsh ./build.ps1 -SkipTests -OutputDirectory ./artifacts/folder
+      - run: pwsh ./tools/check-folder.ps1 -Directory ./artifacts/folder -OutputDirectory ./artifacts/checks
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cursormotion-checks
+          path: artifacts/checks
+          if-no-files-found: ignore

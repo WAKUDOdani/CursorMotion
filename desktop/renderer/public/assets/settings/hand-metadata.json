@@ -1,0 +1,62 @@
+{
+  "crystal": {
+    "width": 1254,
+    "height": 1254,
+    "bounds": {
+      "left": 374,
+      "top": 182,
+      "right": 937,
+      "bottom": 950,
+      "sampleStep": 1,
+      "alphaThreshold": 64
+    }
+  },
+  "aurora": {
+    "width": 1254,
+    "height": 1254,
+    "bounds": {
+      "left": 381,
+      "top": 189,
+      "right": 929,
+      "bottom": 942,
+      "sampleStep": 1,
+      "alphaThreshold": 64
+    }
+  },
+  "carbon": {
+    "width": 1254,
+    "height": 1254,
+    "bounds": {
+      "left": 377,
+      "top": 186,
+      "right": 933,
+      "bottom": 946,
+      "sampleStep": 1,
+      "alphaThreshold": 64
+    }
+  },
+  "rose": {
+    "width": 1254,
+    "height": 1254,
+    "bounds": {
+      "left": 381,
+      "top": 189,
+      "right": 929,
+      "bottom": 942,
+      "sampleStep": 1,
+      "alphaThreshold": 64
+    }
+  },
+  "classic": {
+    "width": 1254,
+    "height": 1254,
+    "bounds": {
+      "left": 358,
+      "top": 167,
+      "right": 952,
+      "bottom": 965,
+      "sampleStep": 1,
+      "alphaThreshold": 64
+    }
+  }
+}
