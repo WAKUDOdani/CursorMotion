@@ -35,6 +35,8 @@ Push-Location $taskRoot
 try{
  node desktop/test-backend.cjs $taskExe
  if($LASTEXITCODE -ne 0){throw 'Actual single-file backend failed'}
+ node tools/check-backend-eof.cjs $taskExe
+ if($LASTEXITCODE -ne 0){throw 'Packaged backend did not shut down on EOF'}
  node desktop/test-tray.cjs $taskExe (Join-Path $taskRepaired.report.runtime 'studio/CursorMotion.Studio.exe')
  if($LASTEXITCODE -ne 0){throw 'Actual single-file tray lifecycle failed'}
 }finally{Pop-Location}
@@ -42,4 +44,4 @@ $taskProfileAfter=if(Test-Path -LiteralPath $taskProfile){(Get-FileHash -Literal
 $taskStartupAfter=(Get-ItemProperty -LiteralPath 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name CursorMotion -ErrorAction SilentlyContinue).CursorMotion
 if($taskProfileBefore -ne $taskProfileAfter -or $taskStartupBefore -ne $taskStartupAfter){throw 'Verification changed installed settings or startup'}
 if(Compare-Object $taskBeside @(Get-ChildItem -LiteralPath (Split-Path $taskExe) -Force | Select-Object -ExpandProperty Name)){throw 'Application created files beside EXE'}
-[pscustomobject]@{pass=$true;version=$taskCold.report.version;file=[IO.Path]::GetFileName($taskExe);bytes=(Get-Item -LiteralPath $taskExe).Length;sha256=(Get-FileHash -LiteralPath $taskExe).Hash.ToLowerInvariant();runtimeFiles=$taskCold.report.files;coldMs=$taskCold.ms;warmMs=$taskWarm.ms;cacheReuse=$true;corruptionRecovery=$true;renamedUnicodePath=$true;settingsInAppData=$true;noFilesBesideExe=$true;installedProfileUntouched=$true;autostartUntouched=$true;noGlobalCursorChanges=$true} | ConvertTo-Json | Tee-Object -FilePath (Join-Path $taskOutput 'package-verification.json')
+[pscustomobject]@{pass=$true;version=$taskCold.report.version;file=[IO.Path]::GetFileName($taskExe);bytes=(Get-Item -LiteralPath $taskExe).Length;sha256=(Get-FileHash -LiteralPath $taskExe).Hash.ToLowerInvariant();runtimeFiles=$taskCold.report.files;coldMs=$taskCold.ms;warmMs=$taskWarm.ms;cacheReuse=$true;corruptionRecovery=$true;renamedUnicodePath=$true;backendEof=$true;settingsInAppData=$true;noFilesBesideExe=$true;installedProfileUntouched=$true;autostartUntouched=$true;noGlobalCursorChanges=$true} | ConvertTo-Json | Tee-Object -FilePath (Join-Path $taskOutput 'package-verification.json')

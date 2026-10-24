@@ -58,7 +58,7 @@ internal static class Program
             Task? stdout = null, stderr = null;
             if (backend)
             {
-                _ = Console.OpenStandardInput().CopyToAsync(child.StandardInput.BaseStream);
+                _ = ForwardInput(child);
                 stdout = child.StandardOutput.BaseStream.CopyToAsync(Console.OpenStandardOutput());
                 stderr = child.StandardError.BaseStream.CopyToAsync(Console.OpenStandardError());
             }
@@ -87,6 +87,12 @@ internal static class Program
     }
     static Stream Resource(string name) => Assembly.GetExecutingAssembly().GetManifestResourceStream(name)
         ?? throw new InvalidDataException("В portable EXE отсутствует компонент: " + name);
+    static async Task ForwardInput(Process child)
+    {
+        try { await Console.OpenStandardInput().CopyToAsync(child.StandardInput.BaseStream); }
+        catch (IOException) { }
+        finally { try { child.StandardInput.Close(); } catch (InvalidOperationException) { } catch (IOException) { } }
+    }
 }
 
 internal sealed record PayloadFile(string Path, long Bytes, string Sha256);
