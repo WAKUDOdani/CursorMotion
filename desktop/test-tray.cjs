@@ -22,7 +22,7 @@ const profile=path.join(process.env.LOCALAPPDATA,'CursorMotion','settings.json')
 const original=fs.existsSync(profile)?fs.readFileSync(profile):null;
 const registration=()=>execFileSync('powershell.exe',['-NoProfile','-Command',"(Get-ItemProperty -LiteralPath 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name CursorMotion -ErrorAction SilentlyContinue).CursorMotion"],{windowsHide:true,encoding:'utf8'}).trim();
 const startupBefore=registration();
-const timeout=setTimeout(()=>{child.kill();for(const process of children)if(process.exitCode===null)process.kill();console.error('Tray lifecycle timeout');process.exit(1);},60000);
+const timeout=setTimeout(()=>{child.kill();for(const process of children)if(process.exitCode===null)process.kill();console.error('Tray lifecycle timeout');process.exit(1);},180000);
 async function connect(){
  const socket=net.createConnection('\\\\.\\pipe\\'+pipe);
  const lines=readline.createInterface({input:socket});

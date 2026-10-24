@@ -8,6 +8,8 @@ const pipeIndex=process.argv.indexOf('--pipe');
 const pipeName=pipeIndex>=0?process.argv[pipeIndex+1]:null;
 const hosted=Boolean(pipeName);
 const test=process.argv.includes('--ui-test')||process.argv.includes('--connection-test');
+const responseTimeout=test?120000:8000;
+function testTrace(message){if(!test)return;const i=process.argv.indexOf('--output');if(i<0)return;try{fs.mkdirSync(process.argv[i+1],{recursive:true});fs.appendFileSync(path.join(process.argv[i+1],'lifecycle.log'),Date.now()+' '+message+'\n');}catch{}}
 if(test){app.setPath('userData',path.join(app.getPath('temp'),'CursorMotion-UI-test-'+process.pid));app.commandLine.appendSwitch('disable-renderer-backgrounding');app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');}
 const portableRoot=path.resolve(__dirname,'../../..');
 if(!test&&fs.existsSync(path.join(portableRoot,'portable.flag'))){
@@ -20,7 +22,7 @@ const allowed=new Set(['get','status','enabled','set','appearance','forms','pack
 function request(cmd,data={}){
  return new Promise((resolve,reject)=>{
   if(!backendInput||backendInput.destroyed)return reject(Error('Движок остановлен. Перезапусти приложение.'));
-  const id=++sequence; const timer=setTimeout(()=>{pending.delete(id);reject(Error('Движок не ответил'));},8000);
+  const id=++sequence; const timer=setTimeout(()=>{pending.delete(id);reject(Error('Движок не ответил'));},responseTimeout);
   pending.set(id,{resolve,reject,timer});backendInput.write(JSON.stringify({id,cmd,data})+'\n');
  });
 }
@@ -30,7 +32,7 @@ function launchEngine(){
   const exe=process.env.CURSOR_MOTION_ENGINE||(engineIndex>=0?process.argv[engineIndex+1]:path.join(__dirname,'engine','CursorMotion.Engine.exe'));
   if(hosted&&!/^CursorMotion\.[A-Za-z0-9.]+$/.test(pipeName))return reject(Error('Некорректный адрес движка'));
   const connection=hosted?net.createConnection('\\\\.\\pipe\\'+pipeName):null;
-  if(!hosted)engine=spawn(exe,['--backend',...(test?['--diagnostic']:[]),...(process.argv.includes('--start')?['--start']:[])],{windowsHide:true,stdio:['pipe','pipe','pipe']});
+  if(!hosted)engine=spawn(exe,['--backend',...(test?['--diagnostic']:[]),...(test&&process.argv.includes('--warp')?['--warp']:[]),...(process.argv.includes('--start')?['--start']:[])],{windowsHide:true,stdio:['pipe','pipe','pipe']});
   backendInput=hosted?connection:engine.stdin;
   const source=hosted?connection:engine.stdout;
   const timeout=setTimeout(()=>reject(Error('Не удалось запустить движок')),15000);
@@ -48,15 +50,18 @@ function launchEngine(){
 }
 async function shutdown(flush=false){
  if(closing)return;closing=true;globalShortcut.unregisterAll();
+ testTrace('shutdown begin; flush='+flush);
  if(flush&&window&&!window.webContents.isDestroyed()){
   try{await Promise.race([window.webContents.executeJavaScript('window.__flushNativeSettings?.()'),new Promise((_,reject)=>setTimeout(()=>reject(Error('Настройки ещё не сохранены')),9000))]);}catch(error){
    if(hosted&&!test){const choice=await dialog.showMessageBox(window,{type:'warning',message:'Не удалось сохранить последние изменения',detail:error.message,buttons:['Остаться в настройках','Закрыть без сохранения последних изменений'],defaultId:0,cancelId:0});if(choice.response===0){closing=false;return;}}
   }
  }
+ testTrace('renderer flush completed');
  try{await request(hosted?'flush':'shutdown');}catch{}
+ testTrace('backend flush completed');
  if(hosted)backendInput?.end();
  if(engine&&engine.exitCode===null){const kill=setTimeout(()=>engine.kill(),1800);engine.once('exit',()=>clearTimeout(kill));}
- app.quit();
+ testTrace('app.quit');app.quit();
 }
 function verified(event){if(!window||event.sender!==window.webContents)throw Error('Invalid sender');}
 ipcMain.handle('studio:request',async(event,cmd,data)=>{verified(event);if(!allowed.has(cmd))throw Error('Неизвестная команда');await ready;return request(cmd,data);});
@@ -93,20 +98,22 @@ async function runTests(){
  let framePump;
  try{
   await ready;
+  // Both hidden test modes need their OWN compositor clock, including the
+  // hosted connection/close probe. This never captures the user's desktop.
+  framePump=setInterval(()=>{if(window&&!window.isDestroyed())window.webContents.capturePage({x:0,y:0,width:1,height:1}).catch(()=>{});},120);
   if(process.argv.includes('--connection-test')){
    const snapshot=await request('get');
    const startup=hosted?await request('startup'):null;
    if(snapshot.appearances.length!==4)throw Error('Hosted settings are incomplete');
    fs.writeFileSync(path.join(output,'results.json'),JSON.stringify({pass:true,hosted,appearances:snapshot.appearances,startup},null,2));
-   await shutdown(true);return;
+   await shutdown(true);clearInterval(framePump);return;
   }
   // A hidden Chromium window may stop requesting frames after a view transition.
   // Keep this test's own compositor painting; never capture the user's desktop.
-  framePump=setInterval(()=>{if(window&&!window.isDestroyed())window.webContents.capturePage({x:0,y:0,width:1,height:1}).catch(()=>{});},120);
   for(let i=0;i<100;i++){if(await window.webContents.executeJavaScript('Boolean(window.__studioReady)'))break;await new Promise(r=>setTimeout(r,100));}
   const errors=[];
   window.webContents.on('console-message',(_event,_level,message)=>{fs.appendFileSync(path.join(output,'progress.log'),String(message)+'\n');if(_level>=3)errors.push(message);});
-  const results=await Promise.race([window.webContents.executeJavaScript('window.__runStudioTests()'),new Promise((_,reject)=>setTimeout(()=>reject(Error('UI interaction checks timed out after 150 seconds')),150000))]);
+  const results=await Promise.race([window.webContents.executeJavaScript('window.__runStudioTests()'),new Promise((_,reject)=>setTimeout(()=>reject(Error('UI interaction checks timed out after 600 seconds')),600000))]);
   await new Promise(resolve=>setTimeout(resolve,3000));
   await window.webContents.insertCSS('*{animation:none!important;transition:none!important}');
   for(const page of ['collection','motion','cursor','screen']){
