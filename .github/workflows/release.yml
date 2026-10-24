@@ -49,6 +49,13 @@ jobs:
         shell: pwsh
         run: |
           $version=([xml](Get-Content -Raw src/CursorMotion.csproj)).Project.PropertyGroup.Version
+          # Protocol checks have their own deadline. First extraction on a fresh
+          # runner is tested separately and must finish before that timer starts.
+          $exe=(Resolve-Path "./dist/single-file/CursorMotion-$version-portable-x64.exe").Path
+          $report=Join-Path $env:RUNNER_TEMP 'cursormotion-runtime.json'
+          $warm=Start-Process -FilePath $exe -ArgumentList @('--bootstrap-info',('"'+$report+'"')) -PassThru -WindowStyle Hidden
+          if(-not $warm.WaitForExit(120000)){ $warm.Kill(); throw 'Runtime extraction timed out' }
+          if($warm.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)){throw 'Runtime extraction failed'}
           & ./tools/verify-package.ps1 -Executable "./dist/single-file/CursorMotion-$version-portable-x64.exe" -OutputDirectory ./artifacts/package-checks
       - uses: actions/upload-artifact@v4
         with:
