@@ -27,7 +27,7 @@ internal static class CursorPacks
         foreach (int target in shape.HasValue ? new[] { shape.Value } : new[] { 0, 1, 2, 3 })
         {
             var old = settings.AppearanceFor(target);
-            settings = settings.WithAppearance(target, pack.Appearance(target) with { Scale = old.Scale, MorphTime = old.MorphTime, IdleHide = old.IdleHide });
+            settings = settings.WithAppearance(target, pack.Appearance(target) with { Scale = old.Scale, ExactSize = old.ExactSize, MorphTime = old.MorphTime, IdleHide = old.IdleHide });
         }
         return settings;
     }

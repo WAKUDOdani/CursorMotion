@@ -4,7 +4,7 @@
 <h1 align="center">CursorMotion</h1>
 <p align="center"><strong>Плавное движение. Твой стиль курсора.</strong><br>Моушн-блюр, мягкие переходы форм и стеклянные наборы для Windows.</p>
 <p align="center">
-  <a href="https://github.com/WAKUDOdani/CursorMotion/releases/download/v3.9.0/CursorMotion-3.9.0-portable-x64.exe"><img src="docs/assets/download-portable.svg" width="266" height="48" alt="Скачать CursorMotion 3.9.0 Portable для Windows x64"></a>
+  <a href="https://github.com/WAKUDOdani/CursorMotion/releases/download/v3.10.0/CursorMotion-3.10.0-portable-x64.exe"><img src="docs/assets/download-portable.svg" width="266" height="48" alt="Скачать CursorMotion 3.10.0 Portable для Windows x64"></a>
   <a href="docs/USAGE.md"><img src="docs/assets/guide.svg" width="164" height="48" alt="Открыть инструкцию"></a>
 </p>
 <p align="center">
@@ -23,6 +23,7 @@
 | **Наборы** | Crystal, Aurora, Carbon, Rose и Classic. Набор можно применить целиком или собрать свой из разных материалов. |
 | **Формы** | Стрелка, текст, ожидание, рука и четыре направления изменения размера окна. Между формами — плавное превращение. |
 | **Внешний вид** | Отдельные размер, заливка, обводка, тень и длительность перехода для четырёх основных форм. Можно связать их размер одним переключателем. |
+| **Пресеты** | Свои наборы всех настроек: сохранить, применить, обновить, удалить и перенести JSON-файлом. |
 | **Рабочее место** | Все мониторы, отдельный экран или своя область; трей, автозапуск по желанию, импорт и экспорт профиля. |
 
 <details>
@@ -34,13 +35,23 @@
 
 </details>
 
+<details>
+<summary><strong>Моушн и пользовательские пресеты</strong></summary>
+
+<a href="docs/assets/motion.png"><img src="docs/assets/motion-rounded.svg" width="1080" alt="Новый моушн: экспозиция, плотность, качество и понятные пояснения"></a>
+<a href="docs/assets/presets.png"><img src="docs/assets/presets-rounded.svg" width="1080" alt="Библиотека пользовательских пресетов CursorMotion"></a>
+
+Скриншоты сняты в самом приложении на демонстрационном профиле Crystal. Максимальный размер — 4.5×; значения выше не принимаются.
+
+</details>
+
 ## Скачать
 
 **Windows x64**, видеокарта с Direct3D 11. Интерфейс приложения — на русском. .NET и Electron уже включены.
 
 | Вариант | Как работает | Обновление |
 | --- | --- | --- |
-| [**Portable 3.9.0**](https://github.com/WAKUDOdani/CursorMotion/releases/download/v3.9.0/CursorMotion-3.9.0-portable-x64.exe) | Один EXE, без установки и прав администратора | Полностью выйти через трей и заменить EXE новой версией |
+| [**Portable 3.10.0**](https://github.com/WAKUDOdani/CursorMotion/releases/download/v3.10.0/CursorMotion-3.10.0-portable-x64.exe) | Один EXE, без установки и прав администратора | Полностью выйти через трей и заменить EXE новой версией |
 
 [Все выпуски и контрольные суммы](https://github.com/WAKUDOdani/CursorMotion/releases). Для запуска скачай только EXE. `SHA256SUMS.txt` нужен для проверки файла; `Source code` — исходники для разработчиков.
 
@@ -59,7 +70,7 @@
 ## Что стоит знать
 
 - Курсор выводится через системный механизм Windows, поэтому остаётся поверх обычных окон, уведомлений и контекстных меню. Указатели, которые приложение рисует самостоятельно, могут сохранять свой вид.
-- В NVIDIA App крупный курсор или длинный шлейф могут искажаться в записи. **«Пространство → Движок и профиль → Ограничение для записи»** ограничивает размер нативных кадров, но пока не гарантирует корректную запись во всех случаях.
+- Размер ограничен диапазоном **0.5–4.5×** для всех форм, общего размера и импортированных пресетов. Запись NVIDIA с моушном проверена на 4.5×; результат на других драйверах может отличаться. [Как работает запись](docs/USAGE.md#nvidia-и-демонстрация-экрана).
 - Настройки находятся в `%LOCALAPPDATA%\CursorMotion\settings.json`. Для переноса на другой ПК используй экспорт и импорт профиля.
 - Автозапуск включается отдельно. После переноса EXE в другую папку выключи и снова включи его, чтобы обновить путь.
 - При паузе и выходе возвращается зарегистрированная схема Windows. Отдельный процесс следит за восстановлением курсора при остановке движка.
@@ -79,7 +90,7 @@ cd desktop/renderer
 npm ci
 cd ../..
 pwsh ./build-single-file.ps1 -SkipTests
-pwsh ./tools/verify-package.ps1 -Executable ./dist/single-file/CursorMotion-3.9.0-portable-x64.exe
+pwsh ./tools/verify-package.ps1 -Executable ./dist/single-file/CursorMotion-3.10.0-portable-x64.exe
 ```
 
 Готовый файл появится в `dist/single-file/`. Параметр `-SkipTests` пропускает проверки на шаге сборки; следующая команда проверяет уже готовый EXE. [Подробнее о сборке и CI](docs/BUILDING.md) · [Порядок выпуска](docs/RELEASING.md).

@@ -25,9 +25,19 @@ export function sameAppearances(first, second) {
   return first.length === second.length && first.every((appearance, index) => Object.keys(appearance).every(key => appearance[key] === second[index][key]));
 }
 
+export const maximumCursorSize = 4.5;
 export function withSharedSize(appearances, scale) {
-  if (!Number.isFinite(scale) || scale < .5 || scale > 6) throw new RangeError('Недопустимый размер');
+  if (!Number.isFinite(scale) || scale < .5 || scale > maximumCursorSize) throw new RangeError('Недопустимый размер');
   return appearances.map(appearance => ({ ...appearance, Scale: scale }));
+}
+
+export function withSharedExactSize(appearances, scale) {
+  return withSharedSize(appearances, scale).map(appearance => ({...appearance, ExactSize: true}));
+}
+export function visibleCursorSize(appearance, state) {
+  const scale = Math.max(.5, Math.min(appearance.Scale, maximumCursorSize));
+  if (appearance.ExactSize || !state.compactRequired) return scale;
+  return Math.max(.5, Math.min(scale * (state.nativeGeometryRatio ?? 1), state.nativeMaximumScale ?? 2.8));
 }
 
 export function packForAppearances(appearances, packs) {

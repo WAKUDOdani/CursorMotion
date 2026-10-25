@@ -10,6 +10,8 @@ cbuffer Constants : register(b0) {
     float4 shadow_color;
     float4 Look;
     float4 Skins;
+    float4 Exposure;
+    float4 History[16];
 };
 #define box_origin Box.xy
 #define box_size Box.zw
@@ -217,7 +219,7 @@ float4 material_surface(float style, float2 p, float distance, float2 normal)
     return float4(lerp(reflection, 1.0.xxx, light * 0.7) * shine, shine) + base * (1.0 - shine);
 }
 
-float4 cursor_at(float2 px, float2 pos, float k)
+float4 cursor_sample(float2 px, float2 pos, float k, out float geometric_coverage)
 {
 	float2 d  = px - pos;
 	float2 lp = float2(tilt_cs.x * d.x + tilt_cs.y * d.y,
@@ -233,6 +235,7 @@ float4 cursor_at(float2 px, float2 pos, float k)
 	}
 	float  outer = saturate(0.5 - (s.x - outline_width) * k);
 	float  inner = saturate(0.5 - s.x * k) * s.y;
+	geometric_coverage = inner + outer * (1.0 - inner);
 
 	float4 surface = fill_color;
 	float styled = lerp(Skins.x > 0.5 ? 1.0 : 0.0, Skins.y > 0.5 ? 1.0 : 0.0, morph);
@@ -258,6 +261,8 @@ float4 cursor_at(float2 px, float2 pos, float k)
 		float rim_light = saturate(dot(normal, float2(-0.6, -0.8)));
 		shell.rgb *= lerp(1.0, 0.48 + rim_light * 0.52, glass_style);
 		float4 glass = surface * inner + shell * (1.0 - surface.a * inner);
+		float shell_coverage = max(0.0, outer - fill_coverage);
+		geometric_coverage = lerp(geometric_coverage, inner + shell_coverage * (1.0 - inner), styled);
 		col = lerp(col, glass, styled);
 	}
 
@@ -266,8 +271,22 @@ float4 cursor_at(float2 px, float2 pos, float k)
 		float  sb = max(shadow_blur, 1.0 / k);
 		float  sh = 1.0 - smoothstep(-sb, sb, sd);
 		col = col + shadow_color * sh * (1.0 - col.a);
+		geometric_coverage += sh * (1.0 - geometric_coverage);
 	}
 	return col;
+}
+
+float4 cursor_at(float2 px, float2 pos, float k)
+{
+    float coverage;
+    return cursor_sample(px, pos, k, coverage);
+}
+
+float2 exposure_at(float t)
+{
+    float index = saturate(t) * (Exposure.x - 1.0);
+    int a = min(int(index), int(Exposure.x) - 2);
+    return lerp(History[a].xy, History[a + 1].xy, index - float(a));
 }
 
 float4 PSMain(float4 screen : SV_POSITION) : SV_TARGET
@@ -278,6 +297,36 @@ float4 PSMain(float4 screen : SV_POSITION) : SV_TARGET
 	// Coverage for the monitor's final cursor pixels, before Windows scales the
 	// native bitmap. The primary monitor uses the original branch unchanged.
 	if (Skins.w > 1.0) k /= Skins.w;
+	if (Exposure.x > 1.5 && Exposure.w > 0.35) {
+		int count = int(clamp(sample_count, 4.0, 128.0));
+		float4 sum = 0;
+		float coverage_sum = 0, weights = 0;
+		[loop] for (int j = 0; j < count; j++) {
+			float t = float(j) / float(max(count - 1, 1));
+			float2 position = exposure_at(t);
+			float dt = 0.5 / float(max(count - 1, 1));
+			float spacing = length(exposure_at(min(1.0, t + dt)) - exposure_at(max(0.0, t - dt)));
+			float sample_k = k / max(1.0, spacing);
+			// Endpoint-weighted whole-image exposure: the physical hotspot is
+			// represented in the integral, with no separate sharp-head pass.
+			float weight = exp2(-(1.5 + 3.5 * trail_falloff) * (1.0 - t));
+			if (j == 0 || j == count - 1) weight *= 0.5;
+			// Temporal samples already provide subpixel coverage while moving.
+			// Keep the original4-sample raster for the stationary branch below.
+			float mask;
+			float4 value = cursor_sample(px, position, sample_k, mask);
+			sum += value * weight;
+			coverage_sum += mask * weight;
+			weights += weight;
+		}
+		float4 result = sum / max(weights, 0.0001);
+		float coverage = coverage_sum / max(weights, 0.0001);
+		// Restore spatial coverage instead of making a long trail increasingly
+		// faint. Intrinsic material transparency stays in premultiplied RGBA.
+		float gain = 1.0 + Exposure.y * (1.0 - exp(-Exposure.w / max(cur_scale * 15.0, 1.0)));
+		if (coverage > 0.002) result *= (1.0 - pow(saturate(1.0 - coverage), gain)) / coverage;
+		return result * opacity;
+	}
 
 	int n = int(min(sample_count, 128.0));
 	float4 acc  = float4(0.0, 0.0, 0.0, 0.0);

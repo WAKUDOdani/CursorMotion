@@ -6,6 +6,7 @@ namespace CursorMotion;
 
 public sealed record Settings
 {
+    public const double MaximumCursorScale = 4.5;
     public int Version { get; init; } = 3;
     // Missing entries inherit the legacy appearance, preserving existing profiles exactly.
     public CursorAppearance? Arrow { get; init; }
@@ -16,6 +17,7 @@ public sealed record Settings
     public double Damping { get; init; } = .85;
     public double Shutter { get; init; } = 270;
     public double TrailFalloff { get; init; } = .6;
+    public double BlurDensity { get; init; } = 2;
     public int MaxSamples { get; init; } = 64;
     public double Tilt { get; init; } = 4;
     public double ClickScale { get; init; } = .85;
@@ -53,8 +55,9 @@ public sealed record Settings
         InterfaceParallax = Limit(InterfaceParallax, 0, 2, 1),
         Smoothing = Limit(Smoothing, 0, 500, 140), Damping = Limit(Damping, .3, 1.5, .85),
         Shutter = Limit(Shutter, 0, 720, 270), TrailFalloff = Limit(TrailFalloff, 0, 1, .6),
+        BlurDensity = Limit(BlurDensity, 0, 4, 2),
         MaxSamples = Math.Clamp(MaxSamples, 4, 128), Tilt = Limit(Tilt, 0, 20, 4),
-        ClickScale = Limit(ClickScale, .5, 1, .85), Scale = Limit(Scale, .5, 6, 1.6),
+        ClickScale = Limit(ClickScale, .5, 1, .85), Scale = Limit(Scale, .5, MaximumCursorScale, 1.6),
         Style = Math.Clamp(Style, -1, 3), OutlineWidth = Limit(OutlineWidth, 0, 4, 1.4),
         ShadowBlur = Limit(ShadowBlur, 0, 10, 2.5), ShadowX = Limit(ShadowX, -10, 10, 0), ShadowY = Limit(ShadowY, -10, 10, 1.5),
         MorphTime = Limit(MorphTime, 0, 500, 140), IdleHide = Limit(IdleHide, 0, 30, 0),

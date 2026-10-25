@@ -4,5 +4,10 @@
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
     <StartupObject>CursorMotion.Bootstrap.CacheTests</StartupObject>
   </PropertyGroup>
-  <ItemGroup><Compile Include="../bootstrap/Program.cs" Link="Bootstrap.cs" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../bootstrap/Program.cs" Link="Bootstrap.cs" />
+    <Compile Include="../bootstrap/PreparationWindow.cs" Link="PreparationWindow.cs" />
+    <Compile Include="../bootstrap/PreparationVisual.cs" Link="PreparationVisual.cs" />
+    <EmbeddedResource Include="../src/Assets/AppIcon.png" LogicalName="CursorMotion.Preparation.Icon.png" />
+  </ItemGroup>
 </Project>

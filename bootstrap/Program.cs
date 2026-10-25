@@ -161,17 +161,28 @@ internal static class PayloadCache
                 using var zip = new ZipArchive(source, ZipArchiveMode.Read);
                 var expected = files.ToDictionary(file => file.Path, StringComparer.OrdinalIgnoreCase);
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                long unpacked = 0, total = files.Sum(file => file.Bytes);
+                progress?.Report("Распаковываем компоненты…", 0);
+                byte[] copyBuffer = new byte[262144];
                 foreach (var entry in zip.Entries)
                 {
                     if (!expected.TryGetValue(entry.FullName, out var file) || !seen.Add(entry.FullName) || entry.Length != file.Bytes)
                         throw new InvalidDataException("Unexpected embedded runtime file");
                     string target = Child(destination, entry.FullName);
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                    using (var input = entry.Open()) using (var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None)) input.CopyTo(output);
-                    progress?.Pump();
+                    using (var input = entry.Open()) using (var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                    {
+                        int length;
+                        while ((length = input.Read(copyBuffer)) > 0)
+                        {
+                            output.Write(copyBuffer, 0, length); unpacked += length;
+                            progress?.Report("Распаковываем компоненты…", total > 0 ? unpacked / (double)total : 1);
+                        }
+                    }
                 }
                 if (seen.Count != files.Length) throw new InvalidDataException("Incomplete embedded runtime");
             }
+            progress?.Report("Проверяем компоненты…");
             if (!Verify(destination, files)) throw new InvalidDataException("Проверка компонентов после распаковки не прошла.");
             string pending = current + "." + Guid.NewGuid().ToString("N") + ".tmp";
             File.WriteAllText(pending, generation); File.Move(pending, current, true);
@@ -181,32 +192,12 @@ internal static class PayloadCache
     }
 }
 
-// A short native splash only during first extraction/repair. No Electron, no
-// desktop capture, focus activation, input hooks or extra resident process.
-internal sealed class PreparationWindow : IDisposable
-{
-    readonly nint window;
-    internal PreparationWindow()
-    {
-        int width = 440, height = 112;
-        window = Native.CreateWindowEx(0x08000080, "STATIC", "CursorMotion\n\nПодготовка первого запуска…", 0x90000201,
-            (Native.GetSystemMetrics(0) - width) / 2, (Native.GetSystemMetrics(1) - height) / 2, width, height, 0, 0, 0, 0);
-        if (window != 0) { Native.SendMessage(window, 0x30, Native.GetStockObject(17), 1); Native.UpdateWindow(window); }
-    }
-    internal void Pump() { while (Native.PeekMessage(out var message, 0, 0, 0, 1)) { Native.TranslateMessage(ref message); Native.DispatchMessage(ref message); } }
-    public void Dispose() { if (window != 0) Native.DestroyWindow(window); }
-}
-
-internal static class Native
+internal static partial class Native
 {
     [StructLayout(LayoutKind.Sequential)] internal struct Point { internal int X, Y; }
     [StructLayout(LayoutKind.Sequential)] internal struct Message { internal nint Hwnd; internal uint Id; internal nuint WParam; internal nint LParam; internal uint Time; internal Point Point; internal uint Private; }
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern int MessageBox(nint owner, string text, string title, uint flags);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] internal static extern nint CreateWindowEx(uint exStyle, string className, string text, uint style, int x, int y, int width, int height, nint parent, nint menu, nint instance, nint param);
-    [DllImport("user32.dll")] internal static extern int GetSystemMetrics(int index);
-    [DllImport("gdi32.dll")] internal static extern nint GetStockObject(int index);
-    [DllImport("user32.dll")] internal static extern nint SendMessage(nint window, uint message, nint wParam, nint lParam);
-    [DllImport("user32.dll")] internal static extern bool UpdateWindow(nint window);
     [DllImport("user32.dll")] internal static extern bool DestroyWindow(nint window);
     [DllImport("user32.dll")] internal static extern bool PeekMessage(out Message message, nint window, uint min, uint max, uint remove);
     [DllImport("user32.dll")] internal static extern bool TranslateMessage(ref Message message);

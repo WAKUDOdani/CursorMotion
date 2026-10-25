@@ -107,7 +107,10 @@ internal static class Native
     [DllImport("shcore.dll")] static extern int GetDpiForMonitor(nint monitor, int type, out uint x, out uint y);
     [DllImport("user32.dll")] internal static extern uint GetDpiForSystem();
     [DllImport("user32.dll")] internal static extern int GetSystemMetricsForDpi(int index, uint dpi);
-    internal sealed record Display(Rect Bounds, bool Primary, uint Dpi = 96)
+    [DllImport("user32.dll", SetLastError = true)] internal static extern uint SetThreadCursorCreationScaling(uint dpi);
+    [DllImport("user32.dll", SetLastError = true)] internal static extern nint SetThreadDpiAwarenessContext(nint context);
+    [DllImport("user32.dll", SetLastError = true)] internal static extern bool GetPhysicalCursorPos(out Point position);
+    internal sealed record Display(Rect Bounds, bool Primary, uint Dpi = 96, int CursorPixels = 32)
     {
         public override string ToString() => $"{Bounds.Width} × {Bounds.Height} · ({Bounds.Left}, {Bounds.Top}){(Primary ? " · основной" : "")}";
     }
@@ -120,12 +123,18 @@ internal static class Native
             if (GetMonitorInfo(monitor, ref info))
             {
                 uint dpi = GetDpiForMonitor(monitor, 0, out uint x, out _) == 0 && x >= 96 ? x : GetDpiForSystem();
-                result.Add(new(info.Monitor, (info.Flags & 1) != 0, dpi));
+                result.Add(new(info.Monitor, (info.Flags & 1) != 0, dpi, GetSystemMetricsForDpi(13, dpi)));
             }
             return true;
         }, 0);
         if (result.Count == 0) throw new InvalidOperationException("Не удалось получить список мониторов.");
         return result;
+    }
+    internal static List<Display> PhysicalDisplays()
+    {
+        nint previous = SetThreadDpiAwarenessContext(-4);
+        try { return Displays(); }
+        finally { if (previous != 0) SetThreadDpiAwarenessContext(previous); }
     }
     internal static Rect Region(Settings s, List<Display> displays)
     {

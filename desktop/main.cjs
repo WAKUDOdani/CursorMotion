@@ -125,9 +125,38 @@ async function runTests(){
   // Keep this test's own compositor painting; never capture the user's desktop.
   const errors=[];
   window.webContents.on('console-message',(_event,_level,message)=>{fs.appendFileSync(path.join(output,'progress.log'),String(message)+'\n');if(_level>=3)errors.push(message);});
-  const results=await Promise.race([window.webContents.executeJavaScript('window.__runStudioTests()'),new Promise((_,reject)=>setTimeout(()=>reject(Error('UI interaction checks timed out after 600 seconds')),600000))]);
+  const results=process.argv.includes('--release-images-only')?{assertions:0,captureOnly:true}:await Promise.race([window.webContents.executeJavaScript('window.__runStudioTests()'),new Promise((_,reject)=>setTimeout(()=>reject(Error('UI interaction checks timed out after 600 seconds')),600000))]);
+  if(process.argv.includes('--release-images')||process.argv.includes('--release-images-only')){
+   // Operate only this hidden diagnostic window, never the user's desktop.
+   await window.webContents.executeJavaScript(`(async()=>{
+    const settle=async()=>{await window.__flushNativeSettings();await window.__pageTransitionFinished();await new Promise(r=>setTimeout(r,250));await window.__waitNativeArtwork();};
+    await window.__showPage('collection',{animate:false});await settle();
+    document.querySelector('[data-pack="crystal"]').click();await settle();
+    document.querySelector('.action-dock .primary-button').click();await settle();
+    await window.__showPage('cursor',{animate:false});await settle();
+    document.querySelector('[aria-label="Одинаковый размер всех форм"]').click();await settle();
+    const size=document.querySelector('input[aria-label="Размер"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(size,'4.5');size.dispatchEvent(new Event('input',{bubbles:true}));size.dispatchEvent(new Event('change',{bubbles:true}));await settle();
+    document.querySelector('.cursor-apply').click();await settle();
+    await window.__showPage('space',{animate:false});await settle();
+    const name=document.querySelector('[aria-label="Название пресета"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(name,'Повседневный');name.dispatchEvent(new Event('input',{bubbles:true}));name.dispatchEvent(new Event('change',{bubbles:true}));await settle();
+    document.querySelector('.preset-create').requestSubmit();await settle();
+   })()`);
+  }
   await new Promise(resolve=>setTimeout(resolve,3000));
   await window.webContents.insertCSS('*{animation:none!important;transition:none!important}');
+  if(process.argv.includes('--release-images')||process.argv.includes('--release-images-only')){
+   window.setContentSize(1630,1058);
+   for(const page of ['collection','motion','cursor','space']){
+    await window.webContents.executeJavaScript(`window.__showPage(${JSON.stringify(page)},{animate:false})`);
+    await new Promise(resolve=>setTimeout(resolve,300));
+    await window.webContents.executeJavaScript('window.__waitNativeArtwork()');
+    fs.writeFileSync(path.join(output,`release-${page}.png`),(await window.webContents.capturePage()).toPNG());
+   }
+   await window.webContents.executeJavaScript(`document.getElementById('user-presets').scrollIntoView({block:'start',behavior:'instant'})`);
+   await new Promise(resolve=>setTimeout(resolve,250));
+   fs.writeFileSync(path.join(output,'release-presets.png'),(await window.webContents.capturePage()).toPNG());
+   fs.writeFileSync(path.join(output,'release-fixture.json'),JSON.stringify({diagnostic:true,noDesktopCapture:true,pack:'Crystal',size:4.5,preset:'Повседневный'},null,2));
+  }
   for(const page of ['collection','motion','cursor','screen']){
    await window.webContents.executeJavaScript(`window.__showPage(${JSON.stringify(page)},{animate:false})`);
    await window.webContents.executeJavaScript('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');

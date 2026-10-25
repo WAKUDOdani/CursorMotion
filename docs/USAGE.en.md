@@ -18,15 +18,23 @@ In **«Курсор»**, independently configure arrow, text, wait, and hand: si
 
 Apply appearance drafts with the apply button. Switching pages alone does not apply them.
 
+## Personal presets
+
+Open **«Пространство → Мои пресеты»**, enter a name and save. A preset includes shapes, sizes, effects, interface and display selection. Apply, update, delete, export or import presets as JSON. Startup is configured separately on another PC.
+
+Short in-app descriptions explain each option. Unavailable controls retain their values and explain why they currently have no effect.
+
 ## Motion
 
 **«Движение»** controls effect smoothing, shutter, trail falloff, quality, tilt, and click response. Smoothing affects exposure and effects; the app does not warp or delay the system mouse position. A **0°** shutter disables blur. Exposure timing is independent of render FPS. Large cursors and long, high-quality blur cost more resources.
 
 ## Recording
 
-In 3.10, **«Пространство → Движок и профиль → Ограничение для записи»** is enforced automatically on NVIDIA: native frames remain within 256×256 pixels, without resizing the cursor. An exposure that does not fit is replaced by the intact static glyph. This bounds the data submitted to the capture pipeline, but does not guarantee a correct cursor in NVIDIA App recordings.
+Cursor size is a hard **0.5–4.5×** range for individual forms, linked sizes, profile imports and user presets. Older oversized values are clamped when loaded.
 
-Current live checks found correct NVIDIA cursor capture at 128×128, while 192×192 and 256×256 distorted the recorded pointer. A 128×128 limit can omit long motion effects; the accepted full-motion build therefore retains 256×256. Full NVIDIA compatibility remains unresolved. Discord was separately reported to show a single pointer.
+The engine selects a bounded cursor transport and gradually fits long exposures into the available space. NVIDIA recording and stopping were verified with motion at 4.5× on the test setup. Unusual large shadows or different driver versions can require further testing. Pointer position stays exact, with shape morphs and click animation preserved. Old profiles keep legacy fitting until their size is edited; the UI displays their effective size.
+
+Discord was separately reported to show a single pointer.
 
 ## Tray and startup
 

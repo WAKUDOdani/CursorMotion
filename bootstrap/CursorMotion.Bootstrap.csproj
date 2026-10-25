@@ -18,6 +18,7 @@
     <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../src/Assets/AppIcon.png" LogicalName="CursorMotion.Preparation.Icon.png" />
     <EmbeddedResource Include="$(PayloadDirectory)/payload.zip" LogicalName="CursorMotion.Payload.zip" />
     <EmbeddedResource Include="$(PayloadDirectory)/payload.json" LogicalName="CursorMotion.Payload.json" />
   </ItemGroup>

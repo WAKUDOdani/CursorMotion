@@ -22,7 +22,7 @@ internal static class CaptureSpriteChecks
             gpu.Render(frame, s, bounds); var source = gpu.Pixels(bounds.Width, bounds.Height);
             // Exercise the ACTUAL publication preparation with a legacy profile
             // that explicitly disables compatibility. NVIDIA must stay bounded.
-            var sprite = presenter.PrepareFrame(source, bounds, false, 0x10DE);
+            var sprite = presenter.PrepareFrame(source, bounds, false, 0x10DE, 256);
             Require(sprite != null, "Current-size lossless frame exceeded capture budget");
             Require(sprite!.Width == 256 && sprite.Height == 256, "NVIDIA cursor dimensions changed between frames");
             // Compare in HOTSPOT coordinates, including all zero pixels in the
@@ -59,7 +59,7 @@ internal static class CaptureSpriteChecks
         var maximumBounds = NativeCursorPresenter.Bounds(maximumFrame, maximum);
         gpu.Render(maximumFrame, maximum, maximumBounds);
         var maximumPixels = gpu.Pixels(maximumBounds.Width, maximumBounds.Height);
-        var maximumSprite = presenter.PrepareFrame(maximumPixels, maximumBounds, false, 0x10DE);
+        var maximumSprite = presenter.PrepareFrame(maximumPixels, maximumBounds, false, 0x10DE, 256);
         Require(maximumSprite is { Width: 256, Height: 256 }, "Maximum-size static arrow cannot be published intact");
         for (int y = 0; y < maximumBounds.Height; y++) for (int x = 0; x < maximumBounds.Width; x++)
         {
@@ -92,7 +92,7 @@ internal static class CaptureSpriteChecks
         Require(cached.NeedsRender(still, settings with { CaptureCompatibility = true }, rectangle), "Stationary capture toggle ignored");
         Require(cached.NeedsRender(still, settings, rectangle), "Stationary normal toggle ignored");
         File.WriteAllText(Path.Combine(output, "capture-sprites.json"), JsonSerializer.Serialize(new {
-            pass = true, records, maxNativeSide = 256, stableNvidiaCanvas = true, maximumArrowIntact = true,
+            pass = true, records, diagnosticMaxSide = 256, productionNvidiaSide = NativeCursorLimits.NvidiaSide, stableNvidiaCanvas = true, maximumArrowIntact = true,
             legacyProfileCannotBypass = true, noGlobalChanges = true, noPixelScaling = true, nvidiaConfirmed = false
         }, new JsonSerializerOptions { WriteIndented = true }));
     }

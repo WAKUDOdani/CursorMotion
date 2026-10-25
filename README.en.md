@@ -4,7 +4,7 @@
 <h1 align="center">CursorMotion</h1>
 <p align="center"><strong>Smooth motion. Your cursor style.</strong><br>Whole-cursor motion blur, soft shape transitions, and glass themes for Windows.</p>
 <p align="center">
-  <a href="https://github.com/WAKUDOdani/CursorMotion/releases/download/v3.9.0/CursorMotion-3.9.0-portable-x64.exe"><img src="docs/assets/download-portable.svg" width="266" height="48" alt="Download CursorMotion 3.9.0 Portable for Windows x64"></a>
+  <a href="https://github.com/WAKUDOdani/CursorMotion/releases/download/v3.10.0/CursorMotion-3.10.0-portable-x64.exe"><img src="docs/assets/download-portable.svg" width="266" height="48" alt="Download CursorMotion 3.10.0 Portable for Windows x64"></a>
   <a href="docs/USAGE.en.md"><img src="docs/assets/guide-en.svg" width="164" height="48" alt="Read the guide"></a>
 </p>
 <p align="center">
@@ -23,6 +23,7 @@
 | **Themes** | Crystal, Aurora, Carbon, Rose, and Classic. Apply a complete pack or mix individual materials. |
 | **Shapes** | Arrow, text, wait, hand, and four window-resize directions, with smooth shape morphs. |
 | **Appearance** | Independent size, fill, outline, shadow, and transition duration for the four primary shapes. An optional switch links their sizes. |
+| **Presets** | Save, apply, update, delete and share complete settings as JSON files. |
 | **Workspace** | All monitors, one display, or a custom region; system tray, opt-in startup, profile import and export. |
 
 <details>
@@ -34,13 +35,23 @@ Motion settings and the applied pack are saved automatically. Appearance drafts 
 
 </details>
 
+<details>
+<summary><strong>Motion controls and personal presets</strong></summary>
+
+<a href="docs/assets/motion.png"><img src="docs/assets/motion-rounded.svg" width="1080" alt="Exposure, blur density, quality and in-app explanations"></a>
+<a href="docs/assets/presets.png"><img src="docs/assets/presets-rounded.svg" width="1080" alt="The personal preset library"></a>
+
+Captured from the actual application with a demonstration Crystal profile. The size limit is 4.5×; larger values are not accepted.
+
+</details>
+
 ## Download
 
 **Windows x64**, with a Direct3D 11 GPU. The application interface is in Russian. .NET and Electron are included.
 
 | Edition | How it works | Updates |
 | --- | --- | --- |
-| [**Portable 3.9.0**](https://github.com/WAKUDOdani/CursorMotion/releases/download/v3.9.0/CursorMotion-3.9.0-portable-x64.exe) | One EXE; no installation or administrator rights required | Fully exit through the tray and replace the EXE |
+| [**Portable 3.10.0**](https://github.com/WAKUDOdani/CursorMotion/releases/download/v3.10.0/CursorMotion-3.10.0-portable-x64.exe) | One EXE; no installation or administrator rights required | Fully exit through the tray and replace the EXE |
 
 [All releases and checksums](https://github.com/WAKUDOdani/CursorMotion/releases). Only the EXE is needed to run the app. `SHA256SUMS.txt` verifies the download; `Source code` is for developers.
 
@@ -59,7 +70,7 @@ First launch extracts components to an AppData cache. Later launches reuse verif
 ## Things to know
 
 - Windows presents the cursor through its system mechanism, above ordinary windows, notifications, and context menus. Application-drawn pointers can retain their own appearance.
-- NVIDIA App can distort large cursors or long trails in recordings. **«Пространство → Движок и профиль → Ограничение для записи»** bounds native frame sizes, but does not yet guarantee correct recording in every case.
+- Cursor size is limited to **0.5–4.5×**, including linked sizes and imported presets. NVIDIA recording with motion was verified at 4.5× on the test setup; other drivers may behave differently. See [capture notes](docs/USAGE.en.md#recording).
 - Settings are at `%LOCALAPPDATA%\CursorMotion\settings.json`. Use profile export/import to transfer them to another PC.
 - Startup is opt-in. After moving the EXE, toggle startup off and on to update its path.
 - Pause and exit restore the registered Windows scheme. A separate watchdog monitors cursor recovery when the engine stops.
@@ -79,7 +90,7 @@ cd desktop/renderer
 npm ci
 cd ../..
 pwsh ./build-single-file.ps1 -SkipTests
-pwsh ./tools/verify-package.ps1 -Executable ./dist/single-file/CursorMotion-3.9.0-portable-x64.exe
+pwsh ./tools/verify-package.ps1 -Executable ./dist/single-file/CursorMotion-3.10.0-portable-x64.exe
 ```
 
 The EXE is written to `dist/single-file/`. `-SkipTests` skips checks during building; the next command verifies the actual package. [Build and CI](docs/BUILDING.md) · [Release process](docs/RELEASING.md).

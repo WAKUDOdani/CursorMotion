@@ -4,6 +4,7 @@ public sealed record CursorAppearance
 {
     public int Skin { get; init; }
     public double Scale { get; init; } = 1.6;
+    public bool ExactSize { get; init; }
     public string FillColor { get; init; } = "#FF000000";
     public string OutlineColor { get; init; } = "#FFFFFFFF";
     public string ShadowColor { get; init; } = "#66000000";
@@ -17,7 +18,7 @@ public sealed record CursorAppearance
     public CursorAppearance Validate() => this with
     {
         Skin = Math.Clamp(Skin, 0, 4),
-        Scale = Settings.Limit(Scale, .5, 6, 1.6),
+        Scale = Settings.Limit(Scale, .5, Settings.MaximumCursorScale, 1.6),
         FillColor = Settings.ValidColor(FillColor, "#FF000000"),
         OutlineColor = Settings.ValidColor(OutlineColor, "#FFFFFFFF"),
         ShadowColor = Settings.ValidColor(ShadowColor, "#66000000"),

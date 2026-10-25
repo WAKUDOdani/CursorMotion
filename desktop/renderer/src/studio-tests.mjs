@@ -49,6 +49,7 @@ export async function runStudioTests(client) {
   check(JSON.stringify(before.arrow.bounds) === JSON.stringify(after.arrow.bounds) && JSON.stringify(before.waiting.bounds) === JSON.stringify(after.waiting.bounds), 'Other form positions and sizes are unchanged');
   check(state().appearances[1].Skin === 1, 'Draft must not auto-apply');
   await change('input[aria-label="Размер"]', 2.35);
+    check(Number(document.querySelector('input[aria-label="Размер"]').max) === 4.5, 'Cursor size control has a hard 4.5x maximum');
   await click('.cursor-apply');
   check(state().appearances[0].Skin === 1 && state().appearances[1].Skin === 2 && state().appearances[2].Skin === 1, 'Mixed native materials applied atomically');
   check(state().appearances[1].Scale === 2.35 && state().appearances[0].Scale === 1.6, 'Independent native sizes');
@@ -63,6 +64,7 @@ export async function runStudioTests(client) {
   await click('.cursor-apply');
   check(state().appearances[1].FillColor === '#80778899' && state().appearances[1].OutlineWidth === 2.2 && state().appearances[1].ShadowBlur === 4.5 && state().appearances[1].ShadowX === -3 && state().appearances[1].IdleHide === 2, 'Appearance controls and ARGB opacity reach native profile');
   check(state().appearances[0].FillColor !== '#80778899' && state().appearances[2].ShadowX === 0, 'Appearance edits stay within selected form');
+
   check(shapeImages().text.src !== textBeforePalette && shapeImages().text.renderer === 'native-sdf', 'Still image updates from actual custom colors, outline and shadow');
   const beforeHand = structuredClone(state().appearances);
   await click('.settings-panel .segments button:nth-child(4)');
@@ -84,7 +86,8 @@ export async function runStudioTests(client) {
   }
   await click('.cursor-apply');
   check(state().appearances.every(look => look.Scale === 3.1), 'Shared size applies to all four complete native appearances');
-  check(state().appearances.every((look, i) => JSON.stringify({ ...look, Scale: beforeSharedSize[i].Scale }) === JSON.stringify(beforeSharedSize[i])), 'Shared size preserves every material, palette, morph and idle setting');
+    check(state().appearances.every((look, i) => JSON.stringify({ ...look, Scale: beforeSharedSize[i].Scale, ExactSize: beforeSharedSize[i].ExactSize }) === JSON.stringify(beforeSharedSize[i])), 'Shared size preserves every material, palette, morph and idle setting');
+    check(state().appearances.every(look=>look.ExactSize), 'Size slider uses literal sizes without the legacy hidden cap');
   await click('[aria-label="Одинаковый размер всех форм"]');
   await change('input[aria-label="Размер"]', 1.95);
   await click('.cursor-apply');
@@ -92,6 +95,29 @@ export async function runStudioTests(client) {
   await click('nav [data-page="motion"]');
   await change('input[aria-label="Сглаживание"]', 210);
   check(state().settings.Smoothing === 210, 'Motion slider reaches backend');
+  await change('input[aria-label="Плотность размытия"]', 3.25);
+  check(state().settings.BlurDensity === 3.25, 'Exposure density slider reaches native renderer settings');
+  check(!document.querySelector('input[aria-label="Затухание пружины"]') && !document.querySelector('input[aria-label="Параллакс объектов"]'), 'Motion panel omits obsolete spring label and interface-only parallax');
+  await click('.settings-panel .native-details summary');
+  const dampingBefore=state().settings.Damping;
+  await change('input[aria-label="Сглаживание"]', 0);
+  check(document.querySelector('input[aria-label="Затухание наклона"]').disabled, 'Damping is unavailable without smoothing');
+  await change('input[aria-label="Затухание наклона"]', .4);
+  check(state().settings.Damping === dampingBefore, 'Disabled damping retains saved value');
+  await change('input[aria-label="Сглаживание"]', 210);
+  check(!document.querySelector('input[aria-label="Затухание наклона"]').disabled, 'Smoothing re-enables relevant tilt damping');
+  await change('input[aria-label="Наклон при движении"]', 0);
+  check(document.querySelector('input[aria-label="Затухание наклона"]').disabled, 'Zero tilt disables tilt-only damping');
+  await change('input[aria-label="Угол затвора"]', 0);
+  check(['Плотность размытия','Затухание шлейфа','Качество шлейфа','База экспозиции','Сглаживание'].every(label=>document.querySelector('input[aria-label="'+label+'"]').disabled), 'Zero shutter and tilt disable dependent effects');
+  const densityBefore=state().settings.BlurDensity;
+  await change('input[aria-label="Плотность размытия"]', 1);
+  check(state().settings.BlurDensity === densityBefore, 'Disabled blur control preserves profile');
+  await change('input[aria-label="Наклон при движении"]', 4);
+  check(!document.querySelector('input[aria-label="Сглаживание"]').disabled, 'Smoothing still controls tilt without blur');
+  await change('input[aria-label="Угол затвора"]', 270);
+  check(['Плотность размытия','Затухание шлейфа','Качество шлейфа','База экспозиции'].every(label=>!document.querySelector('input[aria-label="'+label+'"]').disabled), 'Restoring shutter re-enables blur controls without resetting values');
+
   await click('.settings-panel .segments button:nth-child(3)');
   check(state().settings.Shutter === 360 && state().appearances[1].Scale === 3.1, 'Preset preserves appearances');
   await click('nav [data-page="space"]');
@@ -104,6 +130,11 @@ export async function runStudioTests(client) {
   check(state().settings.PreserveSpecialCursors, 'Special cursor policy reaches backend');
   await click('[aria-label="Меньше движения"]');
   check(state().settings.ReduceMotion && document.querySelector('.reduced-motion'), 'Reduced motion persists');
+  check(document.querySelector('input[aria-label="Параллакс объектов"]').disabled, 'Reduced interface motion disables decorative parallax');
+  const parallaxBefore=state().settings.InterfaceParallax;
+  await change('input[aria-label="Параллакс объектов"]', .5);
+  check(state().settings.InterfaceParallax===parallaxBefore, 'Unavailable parallax does not overwrite stored preference');
+
   await window.__showPage('cursor');
   check(!document.getAnimations().some(animation => animation.animationName?.startsWith('page-')), 'Reduced motion skips page swipes');
   await window.__showPage('space');
@@ -204,7 +235,14 @@ export async function runStudioTests(client) {
   await click('[aria-label="Удалить пресет Мой тестовый"]');
   await click('dialog[open] .native-profile-actions button:nth-child(2)');
   check(state().presets.length === 0 && JSON.stringify(state().settings) === savedFullPreset, 'Deleting preset preserves applied settings');
-  for (const page of ['motion', 'cursor']) {
+  await window.__showPage('cursor'); await settle();
+  const appearanceDetails=document.querySelector('.settings-panel .native-details');
+  if(!appearanceDetails.open)await click('.settings-panel .native-details summary');
+  await change('input[aria-label="Цвет тени, непрозрачность"]', 0);
+  check(['Мягкость тени','Смещение тени X','Смещение тени Y'].every(label=>document.querySelector('input[aria-label="'+label+'"]').disabled), 'Invisible shadow disables controls that cannot affect pixels');
+  await change('input[aria-label="Цвет тени, непрозрачность"]', 50);
+  check(['Мягкость тени','Смещение тени X','Смещение тени Y'].every(label=>!document.querySelector('input[aria-label="'+label+'"]').disabled), 'Restoring shadow opacity restores controls');
+  for (const page of ['motion', 'cursor', 'space']) {
     await window.__showPage(page); await settle();
     check([...document.querySelectorAll('.range-control input')].every(input => document.getElementById(input.getAttribute('aria-describedby'))?.textContent.length > 12), 'Visible descriptions for every slider in '+page);
   }

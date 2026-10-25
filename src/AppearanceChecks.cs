@@ -22,7 +22,7 @@ internal static class AppearanceChecks
         var changed = s.WithAppearance(1, s.AppearanceFor(1) with { Scale = 4, ShadowX = -7, ShadowY = 8, ShadowBlur = 9, ShadowColor = "#55ABCDEF", OutlineWidth = 3.5, IdleHide = 1 });
         Require(changed.AppearanceFor(0) == s.AppearanceFor(0) && changed.AppearanceFor(2) == s.AppearanceFor(2) && changed.Style == s.Style, "Editing text altered another appearance or desktop selection");
         var invalid = changed.WithAppearance(2, new() { Scale = 100, FillColor = "invalid", ShadowX = -100, IdleHide = -5, MorphTime = 900 });
-        Require(invalid.Wait!.Scale == 6 && invalid.Wait.FillColor == "#FF000000" && invalid.Wait.ShadowX == -10 && invalid.Wait.IdleHide == 0 && invalid.Wait.MorphTime == 500, "Appearance validation failed");
+        Require(invalid.Wait!.Scale == Settings.MaximumCursorScale && invalid.Wait.FillColor == "#FF000000" && invalid.Wait.ShadowX == -10 && invalid.Wait.IdleHide == 0 && invalid.Wait.MorphTime == 500, "Appearance validation failed");
         using var gpu = new GpuRenderer();
         var sim = new Simulation();
         var pos = new Vector2(128, 110);

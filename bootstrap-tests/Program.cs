@@ -8,10 +8,36 @@ internal static class CacheTests
 {
     static int assertions;
     static void Check(bool value, string message) { if (!value) throw new Exception(message); assertions++; }
-    static void Main()
+    static void Main(string[] args)
     {
         string root = Path.Combine(Path.GetTempPath(), "CursorMotion-BootstrapTests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
+        string preview = args.Length == 2 && args[0] == "--output" ? Path.GetFullPath(args[1]) : Path.Combine(root, "preparation");
+        Directory.CreateDirectory(preview);
+        foreach (float scale in new[] { 1f, 1.75f, 2f })
+        {
+            using var visual = new PreparationVisual(scale);
+            Check(visual.HasLogo, "Preparation app icon was not embedded");
+            visual.Draw(new("Распаковываем компоненты…", .56), .5);
+            visual.Save(Path.Combine(preview, $"preparation-{scale.ToString(System.Globalization.CultureInfo.InvariantCulture)}x.png"));
+            byte[] rgba = new byte[visual.Width * visual.Height * 4];
+            System.Runtime.InteropServices.Marshal.Copy(visual.Bits, rgba, 0, rgba.Length);
+            Check(rgba[3] == 0, "Preparation has opaque square corners");
+            Check(Enumerable.Range(0, rgba.Length / 4).All(i => rgba[i * 4] <= rgba[i * 4 + 3] && rgba[i * 4 + 1] <= rgba[i * 4 + 3] && rgba[i * 4 + 2] <= rgba[i * 4 + 3]), "Preparation alpha is not premultiplied");
+            visual.Draw(new("Проверяем компоненты…", null), 1);
+            visual.Save(Path.Combine(preview, $"verification-{scale.ToString(System.Globalization.CultureInfo.InvariantCulture)}x.png"));
+        }
+        var splash = new PreparationWindow(visible: false);
+        try
+        {
+            SpinWait.SpinUntil(() => splash.Initialized || splash.Failure != null, 5000);
+            Check(splash.Initialized && splash.Failure == null, "Hidden preparation window failed: " + splash.Failure);
+            Check((splash.WindowStyle & 0x08000080) == 0x08000080 && !splash.WasVisible, "Preparation can activate or exposed a test window");
+            splash.Report("Распаковываем компоненты…", .75); Thread.Sleep(80);
+            Check(splash.Failure == null, "Preparation update failed");
+        }
+        finally { splash.Dispose(); }
+        Check(splash.ThreadEnded, "Preparation UI thread survived disposal");
         byte[] data = Encoding.UTF8.GetBytes("Synthetic runtime, not an executable");
         var files = new[] { new PayloadFile("studio/resources/app/main.cjs", data.Length, Convert.ToHexString(SHA256.HashData(data))) };
         using var buffer = new MemoryStream();

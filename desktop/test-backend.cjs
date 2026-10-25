@@ -11,11 +11,12 @@ const assert=(ok,text)=>{if(!ok)throw Error(text);};
 const timeout=setTimeout(()=>{console.error('Backend protocol/artwork timeout after120s');child.kill();process.exit(1);},120000);
 (async()=>{let count=0;try{
  let state=await ready;assert(state.appearances.length===4,'Missing appearances');count++;
- for(let shape=0;shape<4;shape++){state=await request('appearance',{shape,property:'Scale',value:2+shape});assert(state.appearances[shape].Scale===2+shape,'Independent scale failed');count++;}
- state=await request('pack',{id:1});assert(state.appearances.every((a,i)=>a.Skin===1&&a.Scale===2+i),'Pack resets independent scale');count++;
+ const originalDensity=state.settings.BlurDensity;state=await request('set',{property:'BlurDensity',value:3.25});assert(state.settings.BlurDensity===3.25,'Density not saved by native backend');count++;state=await request('set',{property:'BlurDensity',value:999});assert(state.settings.BlurDensity===4,'Density outside safe range');count++;state=await request('set',{property:'BlurDensity',value:originalDensity});
+ for(let shape=0;shape<4;shape++){state=await request('appearance',{shape,property:'Scale',value:2+shape});assert(state.appearances[shape].Scale===Math.min(4.5,2+shape),'Independent scale failed');count++;}
+ state=await request('pack',{id:1});assert(state.appearances.every((a,i)=>a.Skin===1&&a.Scale===Math.min(4.5,2+i)),'Pack resets independent scale');count++;
  const profile=path.join(output,'roundtrip.json');await request('export',{path:profile});const expected=JSON.stringify(state.settings);await request('reset');state=await request('import',{path:profile});assert(JSON.stringify(state.settings)===expected,'Profile roundtrip failed');count++;
  for(const [cmd,data]of [['set',{property:'Bogus',value:1}],['appearance',{shape:5,property:'Scale',value:1}],['pack',{id:1,shape:-1}]]){let rejected=false;try{await request(cmd,data);}catch{rejected=true;}assert(rejected,'Invalid input accepted');count++;}
- state=await request('appearance',{shape:2,property:'Scale',value:500});assert(state.appearances[2].Scale===6,'Validation failed');count++;
+ state=await request('appearance',{shape:2,property:'Scale',value:500});assert(state.appearances[2].Scale===4.5,'Validation failed');count++;
  const before=state.appearances;state=await request('preset',{name:'Мгновенный'});assert(JSON.stringify(state.appearances)===JSON.stringify(before)&&state.settings.Smoothing===0,'Motion preset affected appearances');count++;
  const forms=structuredClone(state.appearances);forms[1]={...forms[1],Skin:2,Scale:2.35,FillColor:'#AA778899'};
  state=await request('forms',{appearances:forms});assert(JSON.stringify(state.appearances)===JSON.stringify(forms),'Atomic forms apply failed');count++;
@@ -26,7 +27,7 @@ const timeout=setTimeout(()=>{console.error('Backend protocol/artwork timeout af
  const savedHand=JSON.stringify(state.appearances[3]);
  const legacy=structuredClone(state.appearances.slice(0,3));legacy[0].Scale=1.25;
  state=await request('forms',{appearances:legacy});assert(JSON.stringify(state.appearances[3])===savedHand&&state.appearances[0].Scale===1.25,'Legacy three-form batch changed hand');count++;
- const four=structuredClone(state.appearances);four[3]={...four[3],Skin:4,Scale:2.4,MorphTime:185};
+ const four=structuredClone(state.appearances);four[3]={...four[3],Skin:4,Scale:2.4,MorphTime:185,ExactSize:true};
  state=await request('forms',{appearances:four});assert(JSON.stringify(state.appearances)===JSON.stringify(four),'Four-form batch lost the hand');count++;
  const beforeArtwork=JSON.stringify(state.settings);
  const artwork=await request('artwork',{appearances:state.appearances});

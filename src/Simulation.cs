@@ -3,7 +3,7 @@ using System.Numerics;
 namespace CursorMotion;
 
 internal readonly record struct CursorInput(Vector2 Position, bool Visible, int Shape, bool Pressed);
-internal readonly record struct RenderFrame(Vector2 Start, Vector2 Control, Vector2 End, float Scale, float Tilt, float ShapeA, float ShapeB, float Morph, float Animation, float Opacity, int Samples, bool LockHead = false);
+internal readonly record struct RenderFrame(Vector2 Start, Vector2 Control, Vector2 End, float Scale, float Tilt, float ShapeA, float ShapeB, float Morph, float Animation, float Opacity, int Samples, bool LockHead = false, ExposurePath? Exposure = null);
 
 internal sealed class Simulation
 {

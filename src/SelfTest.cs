@@ -46,6 +46,18 @@ internal static class SelfTest
             var custom = new Settings { CustomX = -1920, Shutter = 720, ShadowColor = "#33445566", PreserveSpecialCursors = false };
             custom.Save(path); Require(Settings.Load(path) == custom, "Profile roundtrip changed settings");
         });
+        Test("Size limit: root, four appearances, legacy import and user presets stop at 4.5x", () =>
+        {
+            var tooLarge = new Settings { Scale = 99, Arrow = new() { Scale = 6, ExactSize = true }, Text = new() { Scale = 99 }, Wait = new() { Scale = 10 }, Hand = new() { Scale = 5 } };
+            var limited = tooLarge.Validate();
+            Require(limited.Scale == 4.5 && Enumerable.Range(0, 4).All(i => limited.AppearanceFor(i).Scale == 4.5), "Oversized appearance escaped validation");
+            string file = Path.Combine(output, "oversized-profile.json");
+            File.WriteAllText(file, System.Text.Json.JsonSerializer.Serialize(tooLarge));
+            Require(Settings.Load(file) == limited, "Import bypassed the size limit");
+            var library = new UserPresets(Path.Combine(output, "size-limit-presets"));
+            library.Import(file);
+            Require(library.Items.Single().Settings == limited, "Preset import bypassed the size limit");
+        });
         Test("First launch: embedded defaults never overwrite an existing profile", () =>
         {
             string path = Path.Combine(output, "fresh-profile-" + Guid.NewGuid().ToString("N") + ".json");
@@ -87,6 +99,12 @@ internal static class SelfTest
             Require(!NativeCursorLimits.UseCompact(false, 0x1414), "WARP diagnostic mode misdetected as NVIDIA");
         });
         Test("Monitor vector edges: destination coverage, unchanged silhouette/opacity and primary pixels", () => CursorRasterQualityChecks.Run(output));
+        Test("Direct target raster: physical motion unchanged, 40 material/shape frames and nine private DPI copies", () => CursorTargetRasterChecks.Run());
+        Test("Native target raster: unchanged pixels across creator/reader DPI contexts", () => CursorTargetRasterChecks.Run(true));
+        Test("New whole-form motion: dense history, physical endpoint, bounded continuous exposure and native pixels", () => MotionRebuildChecks.Run(Path.Combine(output, "motion-rebuild")));
+        Test("Motion controls: actual native effect and conditional damping", MotionControlChecks.Run);
+        Test("NVIDIA128: all materials/forms at maximum size, motion, click and fallback slots", () => NvidiaCompatibleChecks.Run(Path.Combine(output, "nvidia128")));
+        Test("Exact size scale: real monotonic growth, working mark and bounded experiments", ExactSizeChecks.Run);
         Test("Popup ordering: immediate menu events, right-button edges and hooks", () =>
         {
             var policy = new TopmostPolicy();
@@ -182,7 +200,7 @@ internal static class SelfTest
         Test("Cursor packs: fifteen vector forms, materials, alpha, mixing and persistence", () => PackChecks.Run(output));
         Test("Native custom cursor: 120 CURs, five animations, hotspots and shell classification (no global changes)", () => NativeCursorChecks.Run(output));
         Test("Native GPU presenter: blur/morph/tilt, 80 material frames, nine role copies and large cursors (private handles)", () => NativePresenterChecks.Run(output));
-        Test("Compact capture sprites: 80 GPU frames, unchanged hotspot pixels, masks, role copies and 256px limit", () => CaptureSpriteChecks.Run(output));
+        Test("Capture crop diagnostics: 80 GPU frames, unchanged pixels/masks and bounded wide fixtures", () => CaptureSpriteChecks.Run(output));
         Test("Hand: five materials, four independent forms, migration and bidirectional morphs", () => HandChecks.Run(output));
         Test("Resize: four directions, five materials, centered hotspots, morphs and inherited arrow profile", () => ResizeChecks.Run(output));
         Test("Glass and honest artwork: transparency, rim, Classic, GPU/PNG/Windows pixel agreement", () => GlassArtworkChecks.Run(output));

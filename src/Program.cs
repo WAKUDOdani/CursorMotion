@@ -15,13 +15,25 @@ internal static class Program
             if (args.Contains("--enable-autostart")) { StartupRegistration.Enabled = true; return 0; }
             if (args.Contains("--disable-autostart")) { StartupRegistration.Enabled = false; return 0; }
             if (args.Contains("--backend")) return BackendServer.Run(args);
+            if (args.Contains("--exact-size-check"))
+            { if (!args.Contains("--offscreen")) throw new ArgumentException("Exact size checks require offscreen mode"); ExactSizeChecks.Run(); return 0; }
+            if (args.Contains("--nvidia-compatible-check"))
+            { if (!args.Contains("--offscreen")) throw new ArgumentException("NVIDIA checks require offscreen mode"); NvidiaCompatibleChecks.Run(args[Array.IndexOf(args, "--output") + 1]); return 0; }
+            if (args.Contains("--motion-rebuild-preview"))
+            { if (!args.Contains("--offscreen")) throw new ArgumentException("Motion preview requires offscreen mode"); MotionRebuildPreview.Export(args[Array.IndexOf(args, "--output") + 1]); return 0; }
+            if (args.Contains("--motion-rebuild-check"))
+            { if (!args.Contains("--offscreen")) throw new ArgumentException("Motion rebuild check requires offscreen mode"); MotionRebuildChecks.Run(args[Array.IndexOf(args, "--output") + 1], !args.Contains("--cpu-only")); return 0; }
+            if (args.Contains("--publication-benchmark"))
+            { if (!args.Contains("--offscreen")) throw new ArgumentException("Publication benchmark requires offscreen mode"); CursorPublicationBenchmark.Run(args[Array.IndexOf(args, "--output") + 1]); return 0; }
             if (args.Contains("--capture-budget-probe"))
             {
                 if (!args.Contains("--offscreen")) throw new ArgumentException("Budget probe is offscreen-only");
                 NativeCaptureBudgetProbe.Run(args[Array.IndexOf(args, "--profile") + 1], args[Array.IndexOf(args, "--output") + 1]); return 0;
             }
             if (args.Contains("--monitor-info"))
-            { Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(Native.Displays().Select(d => new { d.Primary, d.Dpi, d.Bounds.Width, d.Bounds.Height }))); return 0; }
+            { Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(Native.Displays().Select(d => new { d.Primary, d.Dpi, d.Bounds.Width, d.Bounds.Height, cursorPixels = Native.GetSystemMetricsForDpi(13, d.Dpi), systemDpi = Native.GetDpiForSystem() }))); return 0; }
+            if (args.Contains("--target-raster-check"))
+            { if (!args.Contains("--offscreen")) throw new ArgumentException("Target check requires offscreen mode"); CursorTargetRasterChecks.Run(args.Contains("--native-coordinates")); return 0; }
             if (args.Contains("--pointer-shape-probe"))
             {
                 if (!args.Contains("--diagnostic")) throw new ArgumentException("Pointer probe is manual/diagnostic-only");

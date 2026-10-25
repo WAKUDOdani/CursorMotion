@@ -14,6 +14,9 @@ internal sealed class NativeCursorPresenter : IDisposable
     readonly CaptureSprite captureSprite = new();
     internal int RequiredWidth => captureSprite.RequiredWidth;
     internal int RequiredHeight => captureSprite.RequiredHeight;
+    internal double LastCreateMs { get; private set; }
+    internal double LastSetMs { get; private set; }
+    internal void InvalidateBitmaps() => ReleaseBitmaps();
     static readonly uint[] roles = { 32512, 32513, 32514, 32650, 32515, 32516, 32642, 32643, 32644, 32645, 32646, 32648, 32649 };
     readonly nint[] shared = new nint[roles.Length];
     internal static readonly uint[] PrimaryRoles = { 32512, 32513, 32514, 32650, 32649, 32644, 32645, 32642, 32643 };
@@ -57,6 +60,8 @@ internal sealed class NativeCursorPresenter : IDisposable
             float margin = GpuRenderer.AppearanceMargin(scale, outline, softness, x, y);
             var min = Vector2.Min(frame.Start, Vector2.Min(frame.Control, frame.End)) - new Vector2(margin);
             var max = Vector2.Max(frame.Start, Vector2.Max(frame.Control, frame.End)) + new Vector2(margin);
+            if (frame.Exposure is { } exposure)
+            { var pathBounds = exposure.Bounds(); min = pathBounds.Min - new Vector2(margin); max = pathBounds.Max + new Vector2(margin); }
             bounds = new() { Left = (int)Math.Floor(min.X), Top = (int)Math.Floor(min.Y), Right = (int)Math.Ceiling(max.X), Bottom = (int)Math.Ceiling(max.Y) };
         }
         else bounds = GpuRenderer.Bounds(frame, settings, new() { Left = -8192, Top = -8192, Right = 8192, Bottom = 8192 });
@@ -68,6 +73,11 @@ internal sealed class NativeCursorPresenter : IDisposable
         return bounds;
     }
     public nint CreatePrivateCursor(byte[] pixels, int newWidth, int newHeight, int hotX, int hotY)
+    {
+        PrepareBitmapData(pixels, newWidth, newHeight, hotX, hotY);
+        return CreatePreparedCursor(hotX, hotY);
+    }
+    void PrepareBitmapData(byte[] pixels, int newWidth, int newHeight, int hotX, int hotY)
     {
         if (newWidth <= 0 || newHeight <= 0 || newWidth > 2048 || newHeight > 2048 || pixels.Length != newWidth * newHeight * 4
             || hotX < 0 || hotX >= newWidth || hotY < 0 || hotY >= newHeight) throw new ArgumentException("Invalid native frame bounds/hotspot");
@@ -97,20 +107,23 @@ internal sealed class NativeCursorPresenter : IDisposable
         }
         if (Native.SetBitmapBits(mask, (uint)maskPixels.Length, maskPixels) != maskPixels.Length) throw Native.Error("Update native cursor AND mask");
         Marshal.Copy(straightPixels, 0, bits, pixels.Length);
+    }
+    nint CreatePreparedCursor(int hotX, int hotY)
+    {
         var cursorInfo = new Native.IconInfo { HotX = (uint)hotX, HotY = (uint)hotY, Color = color, Mask = mask };
         nint cursor = Native.CreateIconIndirect(ref cursorInfo);
         if (cursor == 0) throw Native.Error("Create GPU system cursor frame");
         return cursor;
     }
-    internal nint[] CreatePublication(byte[] pixels, int width, int height, int hotX, int hotY, int count)
+    internal nint[] CreatePublication(byte[] pixels, int width, int height, int hotX, int hotY, int count, bool directHandles = true)
     {
         var handles = new nint[count];
         try
         {
-            handles[0] = CreatePrivateCursor(pixels, width, height, hotX, hotY);
-            for (int i = 1; i < count; i++)
+            PrepareBitmapData(pixels, width, height, hotX, hotY);
+            for (int i = 0; i < count; i++)
             {
-                handles[i] = Native.CopyImage(handles[0], 2, 0, 0, 0);
+                handles[i] = directHandles || i == 0 ? CreatePreparedCursor(hotX, hotY) : Native.CopyImage(handles[0], 2, 0, 0, 0);
                 if (handles[i] == 0) throw Native.Error("Copy native cursor publication");
             }
             return handles;
@@ -120,19 +133,27 @@ internal sealed class NativeCursorPresenter : IDisposable
     internal NativeCursorFile.Sprite? PrepareFrame(byte[] pixels, Native.Rect bounds, bool requested, uint vendorId, int? maximumSide = null)
     {
         bool compact = NativeCursorLimits.UseCompact(requested, vendorId);
-        return compact ? captureSprite.Prepare(pixels, bounds, NativeCursorLimits.RequiresCompact(vendorId), maximumSide ?? NativeCursorLimits.NativeSide)
+        return compact ? captureSprite.Prepare(pixels, bounds, NativeCursorLimits.RequiresCompact(vendorId), maximumSide ?? NativeCursorLimits.Side(vendorId))
             : new NativeCursorFile.Sprite(bounds.Width, bounds.Height, -bounds.Left, -bounds.Top, pixels);
     }
-    public bool Present(GpuRenderer renderer, Native.Rect bounds, uint role, bool captureCompatibility = false)
+    public bool Present(GpuRenderer renderer, Native.Rect bounds, uint role, bool captureCompatibility = false, uint intendedDpi = 0, bool allRoles = true)
     {
-        // Windows changes role before our next tick. Keep the primary slots on the
-        // same visual frame, so a role change cannot expose an old/finished glyph.
-        // Roles remain separate HCURSORs, allowing detection without input hooks.
-        uint[] targets = PrimaryRoles.Where(r => r != role).Append(role).ToArray();
+        // Synchronize the family at animation boundaries. Intermediate moving
+        // frames update the active role without nine serial system calls.
+        // Distinct HCURSORs retain role detection without input hooks.
         byte[] pixels = renderer.Pixels(bounds.Width, bounds.Height);
         var sprite = PrepareFrame(pixels, bounds, captureCompatibility, renderer.AdapterVendorId);
         if (sprite == null) return false;
+        return PresentSprite(sprite, role, intendedDpi, allRoles);
+    }
+    internal bool PresentSprite(NativeCursorFile.Sprite sprite, uint role, uint intendedDpi = 0, bool allRoles = true)
+    {
+        uint[] targets = allRoles ? PrimaryRoles.Where(r => r != role).Append(role).ToArray() : new[] { role };
+        using var dpiScope = new CursorTargetRaster.DpiScope(intendedDpi);
+        long createStart = System.Diagnostics.Stopwatch.GetTimestamp();
         var handles = CreatePublication(sprite.Pixels, sprite.Width, sprite.Height, sprite.HotX, sprite.HotY, targets.Length);
+        LastCreateMs = System.Diagnostics.Stopwatch.GetElapsedTime(createStart).TotalMilliseconds;
+        long setStart = System.Diagnostics.Stopwatch.GetTimestamp();
         try
         {
             for (int i = 0; i < targets.Length; i++)
@@ -142,6 +163,7 @@ internal sealed class NativeCursorPresenter : IDisposable
             }
         }
         finally { foreach (nint handle in handles) if (handle != 0) Native.DestroyCursor(handle); }
+        LastSetMs = System.Diagnostics.Stopwatch.GetElapsedTime(setStart).TotalMilliseconds;
         return true;
     }
     void ReleaseBitmaps()

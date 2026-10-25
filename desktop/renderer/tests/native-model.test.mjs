@@ -1,10 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NativeStudio, mixFromAppearances, packForAppearances, replaceFormMaterial, sameAppearances, withSharedSize } from '../src/native-model.mjs';
+import { NativeStudio, mixFromAppearances, packForAppearances, replaceFormMaterial, sameAppearances, withSharedSize, withSharedExactSize, visibleCursorSize } from '../src/native-model.mjs';
 
 const appearance = { Skin: 0, Scale: 1.6, MorphTime: 140, IdleHide: 0, FillColor: '#FF000000', OutlineColor: '#FFFFFFFF', ShadowColor: '#66000000', OutlineWidth: 1.4, ShadowBlur: 2.5, ShadowX: 0, ShadowY: 1.5 };
 const packs = [{ Id: 2, Fill: '#FFBDA4FF', Outline: '#FFF3EEFF', Shadow: '#553B2270', Width: .8, Softness: 3.5 }];
 const snapshot = () => ({ settings: { Smoothing: 140, Shutter: 270 }, appearances: Array.from({ length: 4 }, () => ({ ...appearance })), state: { enabled: false }, packs, displays: [] });
+
+test('legacy fitted requests show visible size while exact experimental sizes remain literal', () => {
+  const state = { compactRequired: true, nativeGeometryRatio: 1, nativeMaximumScale: 2.8 };
+  assert.equal(visibleCursorSize({...appearance,Scale:6},state),2.8);
+  assert.equal(visibleCursorSize({...appearance,Scale:6,ExactSize:true},state),4.5);
+  assert.equal(visibleCursorSize({...appearance,Scale:3}, {...state,nativeGeometryRatio:2/3}),2);
+  assert.equal(visibleCursorSize({...appearance,Scale:6}, {compactRequired:false}),4.5);
+});
+
+test('shared literal sizing preserves materials and timing, and survives JSON export', () => {
+  const original=snapshot().appearances.map((look,i)=>({...look,Scale:1+i,MorphTime:100+i*25}));
+  const resized=JSON.parse(JSON.stringify(withSharedExactSize(original,4.5)));
+  for(let i=0;i<4;i++){
+    assert.equal(resized[i].ExactSize,true);
+    assert.equal(resized[i].Scale,4.5);
+    const {ExactSize,...rest}=resized[i];
+    assert.deepEqual({...rest,Scale:original[i].Scale},original[i]);
+  }
+});
 
 test('shared size updates every complete form without changing materials or behavior', () => {
   const original = snapshot().appearances.map((look, i) => ({ ...look, Skin: i, Scale: 1 + i, MorphTime: 100 + i * 40 }));
@@ -12,7 +31,7 @@ test('shared size updates every complete form without changing materials or beha
   assert.deepEqual(original, before);
   assert.ok(resized.every(look => look.Scale === 2.75));
   for (let i = 0; i < 4; i++) assert.deepEqual({ ...resized[i], Scale: original[i].Scale }, original[i]);
-  for (const value of [NaN, Infinity, 0, 7]) assert.throws(() => withSharedSize(original, value), RangeError);
+  for (const value of [NaN, Infinity, 0, 4.51, 6, 7]) assert.throws(() => withSharedSize(original, value), RangeError);
 });
 
 test('repainted stock materials become a custom set while untouched legacy Classic stays Classic', () => {

@@ -18,7 +18,8 @@ internal sealed unsafe class GpuRenderer : IDisposable
     internal float NativePixelFootprint { get; set; } = 1;
     [StructLayout(LayoutKind.Sequential)] struct Constants
     {
-        public Vector4 Box, Path0, Path1, Motion, Shape, Fill, Outline, Shadow, Look, Skins;
+        public Vector4 Box, Path0, Path1, Motion, Shape, Fill, Outline, Shadow, Look, Skins, Exposure;
+        public fixed float History[ExposurePath.Capacity * 4];
     }
     readonly ID3D11Device device;
     readonly ID3D11DeviceContext context;
@@ -143,8 +144,12 @@ internal sealed unsafe class GpuRenderer : IDisposable
             Outline = Vector4.Lerp(Color(a.OutlineColor), Color(b.OutlineColor), f.Morph),
             Shadow = Vector4.Lerp(Color(a.ShadowColor), Color(b.ShadowColor), f.Morph),
             Look = new(Blend(a.OutlineWidth, b.OutlineWidth), Blend(a.ShadowBlur, b.ShadowBlur), Blend(a.ShadowX, b.ShadowX), Blend(a.ShadowY, b.ShadowY)),
-            Skins = new(a.Skin, b.Skin, f.LockHead ? 1 : 0, NativePixelFootprint)
+            Skins = new(a.Skin, b.Skin, f.LockHead ? 1 : 0, NativePixelFootprint),
+            Exposure = new(f.Exposure?.Points.Length ?? 0, (float)s.BlurDensity, f.Exposure?.DurationMs ?? 0, f.Exposure?.Length ?? 0)
         };
+        if (f.Exposure is { } exposure)
+            for (int i = 0; i < exposure.Points.Length; i++)
+            { c.History[i * 4] = exposure.Points[i].X; c.History[i * 4 + 1] = exposure.Points[i].Y; }
         context.UpdateSubresource(constantBuffer, 0, null, (nint)(&c), 0, 0);
         context.Draw(3, 0);
     }

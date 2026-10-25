@@ -27,7 +27,7 @@ internal sealed class BackendSession : IDisposable
         Engine = new(settings, startThread: !diagnostic) { Enabled = !diagnostic && enabled };
         saveTimer = new(_ => { try { Flush(); } catch (Exception ex) { Program.Log(ex); } }, null, Timeout.Infinite, Timeout.Infinite);
     }
-    public object State() => new { enabled = Engine.Enabled, error = Engine.Failure, adapter = Engine.Status, fps = Engine.ActualFps, renderMs = Engine.RenderMilliseconds, presentation = Engine.Presentation, compactRequired = Engine.CompactCursorRequired, frames = Engine.RenderedFrames, nativeBudgetMisses = Engine.NativeBudgetMisses, peakCursorWidth = Engine.PeakCursorWidth, peakCursorHeight = Engine.PeakCursorHeight, diagnostics = Engine.Diagnostics };
+    public object State() => new { enabled = Engine.Enabled, error = Engine.Failure, adapter = Engine.Status, fps = Engine.ActualFps, renderMs = Engine.RenderMilliseconds, presentation = Engine.Presentation, compactRequired = Engine.CompactCursorRequired, maximumCursorSize = Settings.MaximumCursorScale, frames = Engine.RenderedFrames, nativeBudgetMisses = Engine.NativeBudgetMisses, peakCursorWidth = Engine.PeakCursorWidth, peakCursorHeight = Engine.PeakCursorHeight, raster = Engine.RasterDiagnostics, cursorCreateMs = Engine.CursorCreateMs, cursorSetMs = Engine.CursorSetMs, motionKernel = Engine.MotionKernel, historySamples = Engine.HistorySamples, historyError = Engine.HistoryError, activeRoleFrames = Engine.ActiveRoleFrames, familyFrames = Engine.FamilyFrames, nativeCanvasSide = Engine.NativeCanvasSide, nativeScaleRatio = Engine.NativeScaleRatio, nativeMaximumScale = Engine.NativeMaximumScale, nativeGeometryRatio = Engine.NativeGeometryRatio, fittedFrames = Engine.FittedFrames, exposurePixels = Engine.ExposurePixels, exposureMs = Engine.ExposureMilliseconds, diagnostics = Engine.Diagnostics };
     object Snapshot() => new { settings, appearances = Enumerable.Range(0, 4).Select(settings.AppearanceFor).ToArray(), packs = CursorPacks.All, presets = presets.Items.Select(item => new { id = item.Id, name = item.Name, updatedAt = item.UpdatedAt, isCurrent = item.Settings == settings, summary = new { scale = item.Settings.AppearanceFor(0).Scale, shutter = item.Settings.Shutter, smoothing = item.Settings.Smoothing } }).ToArray(), presetWarning = presets.Warning, state = State(), displays = Native.Displays().Select((display, index) => new { id = index, label = display.ToString() }).ToArray(), warning = diagnostic ? null : Settings.LoadWarning };
     public object Execute(string command, JsonElement data = default)
     {
@@ -49,7 +49,7 @@ internal sealed class BackendSession : IDisposable
                 case "flush": if (persist) settings.Save(profilePath); return new { saved = true };
                 case "set":
                     string property = data.GetProperty("property").GetString()!;
-                    string[] allowed = { "Smoothing", "Damping", "Shutter", "TrailFalloff", "MaxSamples", "Tilt", "ClickScale", "Style", "Monitor", "CustomX", "CustomY", "CustomWidth", "CustomHeight", "Fps", "ShutterFps", "PreserveSpecialCursors", "WindowTint", "InterfaceParallax", "ReduceMotion", "CaptureCompatibility" };
+                    string[] allowed = { "Smoothing", "Damping", "Shutter", "TrailFalloff", "BlurDensity", "MaxSamples", "Tilt", "ClickScale", "Style", "Monitor", "CustomX", "CustomY", "CustomWidth", "CustomHeight", "Fps", "ShutterFps", "PreserveSpecialCursors", "WindowTint", "InterfaceParallax", "ReduceMotion", "CaptureCompatibility" };
                     if (!allowed.Contains(property)) throw new ArgumentException("Неизвестная настройка");
                     var updated = settings with { }; SetProperty(updated, property, data.GetProperty("value")); settings = updated; changed = true; result = new { }; break;
                 case "appearance":
@@ -71,7 +71,7 @@ internal sealed class BackendSession : IDisposable
                     settings = next; changed = true; result = new { }; break;
                 case "preset":
                     var motion = Settings.Preset(data.GetProperty("name").GetString()!);
-                    settings = settings with { Smoothing = motion.Smoothing, Damping = motion.Damping, Shutter = motion.Shutter, TrailFalloff = motion.TrailFalloff, MaxSamples = motion.MaxSamples, Tilt = motion.Tilt, ClickScale = motion.ClickScale };
+                    settings = settings with { Smoothing = motion.Smoothing, Damping = motion.Damping, Shutter = motion.Shutter, TrailFalloff = motion.TrailFalloff, BlurDensity = motion.BlurDensity, MaxSamples = motion.MaxSamples, Tilt = motion.Tilt, ClickScale = motion.ClickScale };
                     changed = true; result = new { }; break;
                 case "presets-save":
                     presets.Save(data.GetProperty("name").GetString()!, settings,

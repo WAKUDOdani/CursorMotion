@@ -25,7 +25,7 @@ export function PresetLibrary({ presets = [], warning, busy, hasDraft, onSave, o
     {warning && <p role="alert" className="native-hint">{warning}</p>}
     <div className="preset-list">
       {presets.length ? presets.map(preset => <article className={`preset-card ${preset.isCurrent ? 'is-current' : ''}`} key={preset.id} data-preset-id={preset.id}>
-        <div className="preset-card-copy"><strong>{preset.name}</strong><small>{preset.summary.scale}× · размытие {preset.summary.shutter}° · сглаживание {preset.summary.smoothing} мс</small></div>
+        <div className="preset-card-copy"><strong>{preset.name}</strong><small>{preset.summary.scale}× · размытие {preset.summary.shutter}° · сглаживание {preset.summary.smoothing}</small></div>
         <div className="preset-card-actions"><button className="preset-apply" disabled={busy || (preset.isCurrent && !hasDraft)} aria-label={`Применить пресет ${preset.name}`} onClick={() => hasDraft ? setAction({ kind: 'apply', preset }) : onApply(preset)}>{preset.isCurrent && !hasDraft ? <><Check size={16} />Текущий</> : 'Применить'}</button>
           <button className="preset-icon-action" title="Заменить сохранённые настройки текущими" aria-label={`Обновить пресет ${preset.name}`} disabled={busy} onClick={() => setAction({ kind: 'update', preset })}><ArrowClockwise size={18} /></button>
           <button className="preset-icon-action" title="Экспортировать этот пресет" aria-label={`Экспортировать пресет ${preset.name}`} disabled={busy} onClick={() => onExport(preset)}><DownloadSimple size={18} /></button>
